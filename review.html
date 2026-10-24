@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Framekeeper</title>
+<link rel="stylesheet" href="/vendor/fontawesome/css/fontawesome.min.css">
+<link rel="stylesheet" href="/vendor/fontawesome/css/solid.min.css">
+<link rel="stylesheet" href="/vendor/fontawesome/css/regular.min.css">
 <style>
   :root {
     --bg: #16171a; --panel: #1f2125; --line: #2e3137; --text: #e8e8ea; --muted: #9a9ca3;
@@ -21,6 +24,7 @@
   header .spacer { flex: 1; }
   #saved { min-width: 150px; text-align: right; } /* reserve space so the header doesn't reflow on first save */
   button {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
     background: #2b2e34; color: var(--text); border: 1px solid var(--line); border-radius: 6px;
     padding: 6px 12px; font: inherit; cursor: pointer;
   }
@@ -29,6 +33,10 @@
   button.danger { color: #ffb4b6; }
   kbd { font: 11px ui-monospace, monospace; padding: 0 4px; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); }
   .help { color: var(--muted); padding: 8px 20px 0; font-size: 13px; }
+  .tag .fa-solid, .badge .fa-solid, .stamp .fa-solid { margin-right: 4px; }
+  .logo { color: var(--keep); font-size: 17px; margin-right: -8px; }
+  .zoomgroup { display: inline-flex; align-items: center; gap: 4px; }
+  .zoomgroup > .fa-solid { color: var(--muted); margin-right: 2px; }
   main { padding: 12px 20px 60px; }
   .group { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin: 12px 0; padding: 12px; }
   .group.uncertain { border-color: var(--warn); }
@@ -120,12 +128,13 @@
 </head>
 <body>
 <header>
-  <button id="home" title="Back to the folder list - your choices are already saved">&larr; Save &amp; close</button>
+  <button id="home" title="Back to the folder list - your choices are already saved"><i class="fa-solid fa-arrow-left"></i>Save &amp; close</button>
+  <i class="fa-solid fa-camera-retro logo" title="Framekeeper"></i>
   <h1 id="title">Framekeeper</h1>
   <span class="stats" id="stats"></span>
   <label><input type="checkbox" id="onlyUncertain"> only uncertain</label>
   <label><input type="checkbox" id="showSingles"> show ungrouped photos</label>
-  <button id="openGallery" title="Gallery mode (G)">Gallery</button>
+  <button id="openGallery" title="Gallery mode (G)"><i class="fa-solid fa-images"></i>Gallery</button>
   <span class="spacer"></span>
   <span class="stats" id="saved"></span>
   <label class="stats" title="What happens to the rejects when you finish">then
@@ -134,13 +143,13 @@
       <option value="xmp">write XMP colour labels</option>
       <option value="none">only save choices</option>
     </select></label>
-  <button class="primary" id="finish">Finish &amp; apply</button>
+  <button class="primary" id="finish"><i class="fa-solid fa-flag-checkered"></i>Finish &amp; apply</button>
 </header>
 <div class="help">
   Green = keep, red = reject. <b>Click</b> a shot to make it the only keep in its group
   (ungrouped photos: click toggles keep/reject), <b>&#8984;/Ctrl/Shift-click</b> to toggle it on its own (keep several).
   "Reject all" rejects a whole group. <b>Preview without changing the selection:</b> hover + <b>Space</b>,
-  <b>Alt/&#8997;-click</b>, or the &#10530; button. <b>G</b> opens the gallery (at the hovered group).
+  <b>Alt/&#8997;-click</b>, or the <i class="fa-solid fa-magnifying-glass-plus"></i> button. <b>G</b> opens the gallery (at the hovered group).
   "Compare" shows all shots of a group side by side at full resolution. Uncertain groups (orange) are listed first.
 </div>
 <main id="groups"></main>
@@ -151,13 +160,13 @@
     <span class="pos" id="gpos"></span>
     <span class="meta" id="gmeta"></span>
     <span style="flex:1"></span>
-    <button id="gKeep" title="Keep only this photo in its stack (P)">Keep <kbd>P</kbd></button>
-    <button id="gReject" class="danger" title="Reject / un-reject this photo (X)">Reject photo <kbd>X</kbd></button>
-    <button id="gRejectStack" class="danger" title="Reject the whole stack (Shift+X)">Reject stack <kbd>&#8679;X</kbd></button>
-    <button id="gCompare" title="All photos of this stack side by side at full resolution (C)">Compare stack <kbd>C</kbd></button>
+    <button id="gKeep" title="Keep only this photo in its stack (P)"><i class="fa-solid fa-check"></i>Keep <kbd>P</kbd></button>
+    <button id="gReject" class="danger" title="Reject / un-reject this photo (X)"><i class="fa-solid fa-xmark"></i>Reject photo <kbd>X</kbd></button>
+    <button id="gRejectStack" class="danger" title="Reject the whole stack (Shift+X)"><i class="fa-solid fa-ban"></i>Reject stack <kbd>&#8679;X</kbd></button>
+    <button id="gCompare" title="All photos of this stack side by side at full resolution (C)"><i class="fa-solid fa-table-columns"></i>Compare stack <kbd>C</kbd></button>
     <span id="gzoombtns"></span>
     <label title="Jump to the next stack after Keep, Reject stack, or rejecting an ungrouped photo"><input type="checkbox" id="gAdvance" checked> auto-advance</label>
-    <button id="gClose" title="Back to the grid (Esc or G)">Grid <kbd>Esc</kbd></button>
+    <button id="gClose" title="Back to the grid (Esc or G)"><i class="fa-solid fa-table-cells"></i>Grid <kbd>Esc</kbd></button>
   </div>
   <div class="gbar meta" style="padding-top:4px;padding-bottom:6px;font-size:12px">
     <span><kbd>&larr;</kbd><kbd>&rarr;</kbd> previous/next stack &middot; <kbd>&uarr;</kbd><kbd>&darr;</kbd> photos within the stack &middot;
@@ -171,8 +180,8 @@
     <img alt="" draggable="false">
     <div class="navmap" hidden><img alt=""><div class="vis"></div></div>
     <span class="stamp"></span>
-    <button class="nav prev" title="Previous stack (&larr;)">&lsaquo;</button>
-    <button class="nav next" title="Next stack (&rarr;)">&rsaquo;</button>
+    <button class="nav prev" title="Previous stack (&larr;)"><i class="fa-solid fa-chevron-left"></i></button>
+    <button class="nav next" title="Next stack (&rarr;)"><i class="fa-solid fa-chevron-right"></i></button>
   </div>
   <div id="gstrip"></div>
 </div>
@@ -183,10 +192,10 @@
     <span class="meta" id="cmeta"></span>
     <span style="flex:1"></span>
     <span id="czoom"></span>
-    <button id="cKeep" title="Keep only the selected photo (P)">Keep <kbd>P</kbd></button>
-    <button id="cReject" class="danger" title="Reject / un-reject the selected photo (X)">Reject photo <kbd>X</kbd></button>
-    <button id="cRejectStack" class="danger" title="Reject the whole stack (Shift+X)">Reject stack <kbd>&#8679;X</kbd></button>
-    <button id="cClose" title="Back to the gallery (Esc or C)">Gallery <kbd>Esc</kbd></button>
+    <button id="cKeep" title="Keep only the selected photo (P)"><i class="fa-solid fa-check"></i>Keep <kbd>P</kbd></button>
+    <button id="cReject" class="danger" title="Reject / un-reject the selected photo (X)"><i class="fa-solid fa-xmark"></i>Reject photo <kbd>X</kbd></button>
+    <button id="cRejectStack" class="danger" title="Reject the whole stack (Shift+X)"><i class="fa-solid fa-ban"></i>Reject stack <kbd>&#8679;X</kbd></button>
+    <button id="cClose" title="Back to the gallery (Esc or C)"><i class="fa-solid fa-arrow-left"></i>Gallery <kbd>Esc</kbd></button>
   </div>
   <div class="gbar meta" style="padding-top:4px;padding-bottom:6px;font-size:12px">
     <span><b>Fit:</b> click a spot to see it at 100% in every photo &middot; <b>zoomed:</b> drag or scroll to pan all photos together,
@@ -205,6 +214,10 @@ let data;
 const $ = (s) => document.querySelector(s);
 const enc = encodeURIComponent;
 
+const ic = (name) => `<i class="fa-solid fa-${name}"></i>`;
+const keepTag = (keep, short) => keep ? ic("check") + "KEEP" : ic("xmark") + (short ? "REJ" : "REJECT");
+const zoomButtons = (cur) => `<span class="zoomgroup">${ic("magnifying-glass")}` + ZOOM_LABELS
+  .map((l, i) => `<button data-z="${i}" class="${i === cur ? "primary" : ""}">${l}</button>`).join("") + "</span>";
 const imgUrl = (kind, id) => `/${kind}/${enc(id)}?f=${data.token}`;
 
 async function load() {
@@ -267,8 +280,8 @@ function renderGroup(g) {
     `<strong>${single ? "Ungrouped" : "Group"} ${g.id + 1}</strong><span class="meta">` +
     (single ? "" : `${g.shots.length} shots · `) + `${first.toLocaleString()}` +
     (single ? "" : ` · lead ${Math.round(g.margin * 100)}%`) + `</span>` +
-    (g.uncertain ? '<span class="badge">uncertain</span>' : "") +
-    '<span class="badge red nokeep-badge" hidden>all rejected</span>';
+    (g.uncertain ? `<span class="badge">${ic("scale-balanced")}uncertain</span>` : "") +
+    `<span class="badge red nokeep-badge" hidden>${ic("ban")}all rejected</span>`;
   const rejectAll = document.createElement("button");
   rejectAll.className = "reject-all";
   rejectAll.onclick = () => {
@@ -278,12 +291,12 @@ function renderGroup(g) {
     persist(g);
   };
   const toGallery = document.createElement("button");
-  toGallery.textContent = "Gallery";
+  toGallery.innerHTML = ic("images") + "Gallery";
   toGallery.onclick = () => openGallery(g.id);
   head.append(rejectAll, toGallery);
   if (!single) {
     const btn = document.createElement("button");
-    btn.textContent = "Compare";
+    btn.innerHTML = ic("table-columns") + "Compare";
     btn.title = "All shots side by side at full resolution";
     btn.onclick = () => { openGallery(g.id); openCompare(); };
     head.appendChild(btn);
@@ -310,7 +323,7 @@ function renderShot(g, s) {
   const zoom = document.createElement("button");
   zoom.className = "zoom";
   zoom.title = "Preview (Alt-click or Space also work)";
-  zoom.textContent = "⤢";
+  zoom.innerHTML = ic("magnifying-glass-plus");
   f.appendChild(zoom);
   f.onclick = (e) => {
     if (e.altKey || e.target === zoom) return showPreview(s);
@@ -333,13 +346,14 @@ function refreshGroup(g, el) {
   for (const f of el.querySelectorAll("figure")) {
     const s = g.shots.find((x) => x.id === f.dataset.id);
     f.classList.toggle("keep", s.keep);
-    f.querySelector(".tag").textContent = s.keep ? "KEEP" : "REJECT";
+    f.querySelector(".tag").innerHTML = keepTag(s.keep);
   }
   const none = !g.shots.some((s) => s.keep);
   el.classList.toggle("uncertain", g.uncertain && !none);
   el.classList.toggle("nokeep", none);
   el.querySelector(".nokeep-badge").hidden = !none;
-  el.querySelector(".reject-all").textContent = none ? "Restore" : g.shots.length === 1 ? "Reject" : "Reject all";
+  el.querySelector(".reject-all").innerHTML = none ? ic("rotate-left") + "Restore"
+    : ic("ban") + (g.shots.length === 1 ? "Reject" : "Reject all");
   stats();
 }
 
@@ -434,9 +448,8 @@ function drawGallery() {
   stage.classList.toggle("zoomed", !!gView.zoom);
   stage.classList.toggle("keep", s.keep);
   stage.classList.toggle("rejected", !s.keep);
-  stage.querySelector(".stamp").textContent = (s.keep ? "KEEP" : "REJECT") + (gView.zoom ? " · " + ZOOM_LABELS[gView.zoom] : "");
-  $("#gzoombtns").innerHTML = ZOOM_LABELS
-    .map((l, i) => `<button data-z="${i}" class="${i === gView.zoom ? "primary" : ""}">${l}</button>`).join(" ");
+  stage.querySelector(".stamp").innerHTML = keepTag(s.keep) + (gView.zoom ? " · " + ZOOM_LABELS[gView.zoom] : "");
+  $("#gzoombtns").innerHTML = zoomButtons(gView.zoom);
   for (const b of $("#gzoombtns").querySelectorAll("button")) b.onclick = () => gSetZoom(+b.dataset.z);
   layoutStage();
 
@@ -445,10 +458,10 @@ function drawGallery() {
   $("#gmeta").innerHTML =
     `${s.id} <b>${kinds(s)}</b> · ${new Date(s.time * 1000).toLocaleString()}` +
     (single ? "" : ` · sharpness ${Math.round(s.rel * 100)}% of best`) +
-    (g.uncertain ? ' <span class="badge">uncertain</span>' : "") +
-    (allRejected ? ' <span class="badge red">stack rejected</span>' : "");
-  $("#gRejectStack").innerHTML = allRejected ? "Restore stack <kbd>U</kbd>" : "Reject stack <kbd>&#8679;X</kbd>";
-  $("#gReject").innerHTML = (s.keep ? "Reject photo" : "Un-reject photo") + " <kbd>X</kbd>";
+    (g.uncertain ? ` <span class="badge">${ic("scale-balanced")}uncertain</span>` : "") +
+    (allRejected ? ` <span class="badge red">${ic("ban")}stack rejected</span>` : "");
+  $("#gRejectStack").innerHTML = allRejected ? ic("rotate-left") + "Restore stack <kbd>U</kbd>" : ic("ban") + "Reject stack <kbd>&#8679;X</kbd>";
+  $("#gReject").innerHTML = s.keep ? ic("xmark") + "Reject photo <kbd>X</kbd>" : ic("rotate-left") + "Un-reject photo <kbd>X</kbd>";
 
   const strip = $("#gstrip");
   strip.innerHTML = "";
@@ -456,7 +469,7 @@ function drawGallery() {
   else g.shots.forEach((x, i) => {
     const t = document.createElement("div");
     t.className = "t" + (x.keep ? " keep" : "") + (i === si ? " cur" : "");
-    t.innerHTML = `<img src="${imgUrl("thumb", x.id)}" alt=""><span class="tag">${x.keep ? "KEEP" : "REJ"}</span>`;
+    t.innerHTML = `<img src="${imgUrl("thumb", x.id)}" alt=""><span class="tag">${keepTag(x.keep, true)}</span>`;
     t.onclick = () => { si = i; redraw(); };
     strip.appendChild(t);
   });
@@ -666,16 +679,15 @@ function drawCompare() {
     const p = cmp.panels[i];
     p.el.classList.toggle("keep", s.keep);
     p.el.classList.toggle("cur", i === si);
-    p.el.querySelector(".tag").textContent = s.keep ? "KEEP" : "REJECT";
+    p.el.querySelector(".tag").innerHTML = keepTag(s.keep);
   });
   const s = g.shots[si];
   $("#cpos").textContent = `Stack ${gi + 1} / ${gGroups.length}` + (g.shots.length > 1 ? ` · selected ${si + 1} / ${g.shots.length}` : "");
-  $("#cmeta").innerHTML = `${s.id} <b>${kinds(s)}</b>` + (g.uncertain ? ' <span class="badge">uncertain</span>' : "");
-  $("#cReject").innerHTML = (s.keep ? "Reject photo" : "Un-reject photo") + " <kbd>X</kbd>";
-  $("#cRejectStack").innerHTML = g.shots.some((x) => x.keep) ? "Reject stack <kbd>&#8679;X</kbd>" : "Restore stack <kbd>U</kbd>";
+  $("#cmeta").innerHTML = `${s.id} <b>${kinds(s)}</b>` + (g.uncertain ? ` <span class="badge">${ic("scale-balanced")}uncertain</span>` : "");
+  $("#cReject").innerHTML = s.keep ? ic("xmark") + "Reject photo <kbd>X</kbd>" : ic("rotate-left") + "Un-reject photo <kbd>X</kbd>";
+  $("#cRejectStack").innerHTML = g.shots.some((x) => x.keep) ? ic("ban") + "Reject stack <kbd>&#8679;X</kbd>" : ic("rotate-left") + "Restore stack <kbd>U</kbd>";
   $("#cstats").textContent = $("#gstats").textContent;
-  $("#czoom").innerHTML = ZOOM_LABELS
-    .map((l, i) => `<button data-z="${i}" class="${i === cmp.zoom ? "primary" : ""}">${l}</button>`).join(" ");
+  $("#czoom").innerHTML = zoomButtons(cmp.zoom);
   for (const b of $("#czoom").querySelectorAll("button")) b.onclick = () => setZoom(+b.dataset.z);
   layoutCompare();
 }
@@ -826,8 +838,8 @@ $("#finish").onclick = async () => {
   await flushSeen();
   const r = await fetch("/api/finish", { method: "POST", body: JSON.stringify({ mode: data.apply_mode }) });
   const j = await r.json().catch(() => ({}));
-  document.body.innerHTML = '<div id="done"><div>Review finished</div><pre></pre><br>' +
-    '<button class="primary" onclick="location.href=\'/\'">Back to folders</button></div>';
+  document.body.innerHTML = `<div id="done"><div>${ic("circle-check")} Review finished</div><pre></pre><br>` +
+    `<button class="primary" onclick="location.href='/'">${ic("arrow-left")}Back to folders</button></div>`;
   document.querySelector("#done pre").textContent = r.ok ? j.output : "Apply failed: " + (j.error || r.statusText);
 };
 

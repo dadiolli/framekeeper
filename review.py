@@ -27,6 +27,8 @@ from imaging import WORK_DIR, render_crop, render_full
 
 HERE = Path(__file__).parent
 PAGES = {"/": HERE / "home.html", "/review": HERE / "review.html"}
+VENDOR = HERE / "vendor"  # third-party assets shipped with the app (Font Awesome), served under /vendor/
+VENDOR_TYPES = {".css": "text/css; charset=utf-8", ".woff2": "font/woff2", ".txt": "text/plain; charset=utf-8"}
 RECENT = Path(os.environ.get("FRAMEKEEPER_HOME") or Path.home() / ".framekeeper") / "recent.json"
 MAX_RECENT = 20
 APPLY_MODES = ("move", "xmp", "none")
@@ -257,7 +259,8 @@ def make_handler(app):
             self.send_response(code)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "max-age=3600" if ctype == "image/jpeg" else "no-store")
+            cacheable = ctype == "image/jpeg" or self.path.startswith("/vendor/")
+            self.send_header("Cache-Control", "max-age=3600" if cacheable else "no-store")
             self.end_headers()
             self.wfile.write(body)
 
@@ -273,7 +276,13 @@ def make_handler(app):
         def do_GET(self):
             url = urlparse(self.path)
             parts = url.path.strip("/").split("/", 1)
-            if url.path in PAGES:
+            if url.path.startswith("/vendor/"):
+                f = (VENDOR / unquote(url.path[len("/vendor/"):])).resolve()
+                if VENDOR.resolve() in f.parents and f.is_file() and f.suffix in VENDOR_TYPES:
+                    self.send(200, f.read_bytes(), VENDOR_TYPES[f.suffix])
+                else:
+                    self.send(404, b"not found", "text/plain")
+            elif url.path in PAGES:
                 self.send(200, PAGES[url.path].read_bytes(), "text/html; charset=utf-8")
             elif url.path == "/api/home":
                 with app.lock:

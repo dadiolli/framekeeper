@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Framekeeper</title>
+<link rel="stylesheet" href="/vendor/fontawesome/css/fontawesome.min.css">
+<link rel="stylesheet" href="/vendor/fontawesome/css/solid.min.css">
+<link rel="stylesheet" href="/vendor/fontawesome/css/regular.min.css">
 <style>
   :root {
     --bg: #16171a; --panel: #1f2125; --line: #2e3137; --text: #e8e8ea; --muted: #9a9ca3;
@@ -17,6 +20,7 @@
   main { max-width: 980px; margin: 0 auto; padding: 20px 16px 60px; }
   h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 28px 0 10px; }
   button {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
     background: #2b2e34; color: var(--text); border: 1px solid var(--line); border-radius: 6px;
     padding: 6px 12px; font: inherit; cursor: pointer; white-space: nowrap;
   }
@@ -25,6 +29,13 @@
   button.primary { background: var(--keep); color: #08210f; border-color: var(--keep); font-weight: 600; }
   button.big { font-size: 16px; padding: 10px 20px; }
   button.link { background: none; border-color: transparent; color: var(--muted); }
+  button.link:hover:not(:disabled) { color: var(--text); }
+  header h1 { display: flex; align-items: center; gap: 9px; }
+  header h1 .fa-solid { color: var(--keep); font-size: 18px; }
+  .chip .fa-solid { margin-right: 3px; }
+  .stat .fa-solid { margin-right: 5px; }
+  .empty { display: flex; align-items: center; gap: 10px; }
+  .empty .fa-regular { font-size: 22px; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
   .open { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
   .open .or { color: var(--muted); }
@@ -55,29 +66,30 @@
   .empty { color: var(--muted); }
   #msg button { font: 13px -apple-system, system-ui, sans-serif; margin: 6px 6px 0 0; text-align: left; white-space: normal; }
   /* drag & drop: the whole window is the drop zone */
-  #drop { position: fixed; inset: 10px; z-index: 20; display: none; align-items: center; justify-content: center;
+  #drop { position: fixed; inset: 10px; z-index: 20; display: none; flex-direction: column; gap: 14px; align-items: center; justify-content: center;
           border: 3px dashed var(--keep); border-radius: 16px; background: rgba(22, 23, 26, .88);
           font-size: 22px; font-weight: 600; pointer-events: none; }
   body.dragging #drop { display: flex; }
+  #drop .fa-solid { font-size: 56px; color: var(--keep); }
   @media (max-width: 640px) { .row { grid-template-columns: 1fr; } .row .actions { justify-content: flex-start; } }
 </style>
 </head>
 <body>
 <header>
-  <h1>Framekeeper</h1>
+  <h1><i class="fa-solid fa-camera-retro"></i>Framekeeper</h1>
   <span class="spacer"></span>
-  <button class="link" id="quit" title="Stop the Framekeeper server (your choices are saved)">Quit</button>
+  <button class="link" id="quit" title="Stop the Framekeeper server (your choices are saved)"><i class="fa-solid fa-power-off"></i>Quit</button>
 </header>
 <main>
   <div class="card">
     <div class="open">
-      <button class="primary big" id="choose">Choose folder…</button>
+      <button class="primary big" id="choose"><i class="fa-solid fa-folder-open"></i>Choose folder…</button>
       <span class="or">or</span>
       <input id="path" placeholder="paste a folder path, e.g. ~/Pictures/2026-10-20_shoot" spellcheck="false">
-      <button id="openPath">Open</button>
+      <button id="openPath">Open<i class="fa-solid fa-arrow-right"></i></button>
     </div>
     <div class="hint">
-      <b>Tip:</b> you can also drag a folder (or a few photos from it) from Finder onto this page.
+      <i class="fa-solid fa-file-import"></i> <b>Tip:</b> you can also drag a folder (or a few photos from it) from Finder onto this page.
       New folders are scored first (progress shows here), then the review opens. Your choices are saved with every click,
       so you can stop any time - "Save &amp; close" in the review, close the tab, or Quit - and resume later from the list below.
       <span id="dryrun"></span>
@@ -91,7 +103,7 @@
   <div class="rows" id="recent"></div>
 </main>
 
-<div id="drop">Drop a photo folder to open it</div>
+<div id="drop"><i class="fa-solid fa-folder-plus"></i>Drop a photo folder to open it</div>
 
 <script>
 const $ = (s) => document.querySelector(s);
@@ -137,7 +149,7 @@ function renderJob(h) {
   box.style.display = job.state === "scoring" ? "block" : "none";
   $("#choose").disabled = $("#openPath").disabled = job.state === "scoring";
   if (job.state === "scoring") {
-    $("#jobtext").innerHTML = `<b>${esc(job.folder.split("/").pop())}</b> &middot; ${esc(job.message || "")}`;
+    $("#jobtext").innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <b>${esc(job.folder.split("/").pop())}</b> &middot; ${esc(job.message || "")}`;
     bar.classList.toggle("indet", !job.total);
     bar.firstElementChild.style.width = job.total ? (100 * job.done / job.total) + "%" : "";
   }
@@ -148,7 +160,8 @@ function renderJob(h) {
   a.style.display = showActive ? "flex" : "none";
   if (showActive) {
     a.innerHTML = `<span>Open now: <b>${esc(h.active.split("/").pop())}</b></span>
-      <button class="primary" id="cont">Continue reviewing</button><button id="closeActive">Save &amp; close</button>`;
+      <button class="primary" id="cont"><i class="fa-solid fa-play"></i>Continue reviewing</button>
+      <button id="closeActive"><i class="fa-solid fa-floppy-disk"></i>Save &amp; close</button>`;
     $("#cont").onclick = () => (location.href = "/review");
     $("#closeActive").onclick = async () => { await post("/api/close"); refresh(); };
   }
@@ -158,7 +171,7 @@ function renderRecent(h) {
   const box = $("#recent");
   box.innerHTML = "";
   if (!h.recent.length) {
-    box.innerHTML = '<div class="empty">No folders yet - choose one above.</div>';
+    box.innerHTML = '<div class="empty"><i class="fa-regular fa-images"></i>No folders yet - choose one above or drop one here.</div>';
     return;
   }
   for (const f of h.recent) box.appendChild(renderRow(f, h));
@@ -178,22 +191,22 @@ function renderRow(f, h) {
            `${f.keep} keep / ${f.reject} reject` + (f.skipped ? ` · ${f.skipped} unreadable` : "") +
            ` · reviewed ${f.seen} / ${f.stacks} stacks`;
     progress = `<div class="bar"><div style="width:${100 * f.seen / Math.max(1, f.stacks)}%"></div></div>`;
-    if (movedAway) chips += '<span class="chip applied">rejects moved</span>';
-    else if (f.applied === "xmp") chips += '<span class="chip applied">XMP labels written</span>';
-    else if (f.reviewed) chips += '<span class="chip done">finished</span>';
-    if (f.uncertain && !f.applied) chips += `<span class="chip warn">${f.uncertain} uncertain</span>`;
+    if (movedAway) chips += '<span class="chip applied"><i class="fa-solid fa-box-archive"></i>rejects moved</span>';
+    else if (f.applied === "xmp") chips += '<span class="chip applied"><i class="fa-solid fa-tag"></i>XMP labels written</span>';
+    else if (f.reviewed) chips += '<span class="chip done"><i class="fa-solid fa-flag-checkered"></i>finished</span>';
+    if (f.uncertain && !f.applied) chips += `<span class="chip warn"><i class="fa-solid fa-scale-balanced"></i>${f.uncertain} uncertain</span>`;
   }
   el.innerHTML = `
     <div>
       <div class="name">${esc(f.name)}${chips}</div>
       <div class="path">${esc(f.path)}</div>
-      <div class="stat">${esc(stat)}</div>${progress}
+      <div class="stat">${f.exists ? "" : '<i class="fa-solid fa-triangle-exclamation"></i>'}${esc(stat)}</div>${progress}
     </div>
     <div class="actions"></div>`;
   const actions = el.querySelector(".actions");
-  const add = (label, cls, fn, title, disabled) => {
+  const add = (icon, label, cls, fn, title, disabled) => {
     const b = document.createElement("button");
-    b.textContent = label;
+    b.innerHTML = `<i class="fa-solid fa-${icon}"></i>${label}`;
     if (cls) b.className = cls;
     if (title) b.title = title;
     b.disabled = !!disabled;
@@ -201,15 +214,16 @@ function renderRow(f, h) {
     actions.appendChild(b);
   };
   if (f.exists) {
-    const label = !f.scored ? "Score & review" : f.seen && f.seen < f.stacks ? "Resume" : "Open";
-    add(label, "primary", () => openFolder(f.path, false),
+    const [icon, label] = !f.scored ? ["wand-magic-sparkles", "Score &amp; review"]
+      : f.seen && f.seen < f.stacks ? ["play", "Resume"] : ["folder-open", "Open"];
+    add(icon, label, "primary", () => openFolder(f.path, false),
         movedAway ? "Rejects were moved to _rejects/ - undo the apply first, or rescan" : "", busy || movedAway);
-    if (f.can_undo) add("Undo apply", "", () => undo(f.path), "Move everything from _rejects/ back", busy);
-    if (f.scored) add("Rescan", "", () => {
+    if (f.can_undo) add("rotate-left", "Undo apply", "", () => undo(f.path), "Move everything from _rejects/ back", busy);
+    if (f.scored) add("arrows-rotate", "Rescan", "", () => {
       if (confirm(`Rescan ${f.name}?\n\nThis scores the folder again and discards your review choices for it.`)) openFolder(f.path, true);
     }, "Score again from scratch (discards your choices)", busy);
   }
-  add("✕", "link", async () => { await post("/api/forget", { path: f.path }); refresh(); }, "Remove from this list (files are not touched)");
+  add("xmark", "", "link", async () => { await post("/api/forget", { path: f.path }); refresh(); }, "Remove from this list (files are not touched)");
   return el;
 }
 

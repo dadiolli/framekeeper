@@ -100,3 +100,5 @@ The recent-folders list is stored in `~/.framekeeper/recent.json`.
 ## License
 
 MIT, see [LICENSE](LICENSE).
+
+Icons: [Font Awesome Free](https://fontawesome.com) 7.3.1 by Fonticons, Inc., bundled in `vendor/fontawesome/` so the app works offline. Icons are licensed under CC BY 4.0, fonts under SIL OFL 1.1 and code under the MIT License (see `vendor/fontawesome/LICENSE.txt`).
