@@ -99,6 +99,6 @@ The recent-folders list is stored in `~/.framekeeper/recent.json`.
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+Framekeeper's own code is MIT licensed, see [LICENSE](LICENSE).
 
-Icons: [Font Awesome Free](https://fontawesome.com) 7.3.1 by Fonticons, Inc., bundled in `vendor/fontawesome/` so the app works offline. Icons are licensed under CC BY 4.0, fonts under SIL OFL 1.1 and code under the MIT License (see `vendor/fontawesome/LICENSE.txt`).
+Bundled third-party components are not covered by that license. Icons come from [Font Awesome Free](https://fontawesome.com) 7.3.1 by Fonticons, Inc., bundled in `vendor/fontawesome/` so the app works offline: icons CC BY 4.0, fonts SIL OFL 1.1, code MIT. Details are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
