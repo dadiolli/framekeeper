@@ -54,12 +54,13 @@ The recent-folders list is stored in `~/.framekeeper/recent.json`.
      | `X` | reject / un-reject this photo |
      | `⇧X` | reject the whole stack (again: restore) |
      | `U` | restore the proposal for this stack |
+     | `⌫` | undo the last decision (while its confirmation is shown) |
      | `Z` / `Space` | toggle fit ↔ 100% (starts on the sharpest area) |
      | `0` `1` `2` `5` | fit / 100% / 200% / 50% |
      | `C` | compare the stack at full resolution |
      | `Esc` / `G` | back to the grid |
 
-     With "auto-advance" on (default), it jumps to the next stack after `P`, `⇧X`, or rejecting an ungrouped photo.
+     With "auto-advance" on (default), it jumps to the next stack after `P`, `⇧X`, or rejecting an ungrouped photo. Every decision shows a short confirmation at the bottom ("✕ Rejected DSC0005 · next stack") with an Undo button.
 
      **Zoom and move around:**
      - Click a spot on the photo to see it at 100%, or use the keys above or the Fit/50%/100%/200% buttons.

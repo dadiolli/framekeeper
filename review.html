@@ -66,6 +66,16 @@
   #overlay { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none; align-items: center; justify-content: center; z-index: 10; cursor: zoom-out; }
   #overlay img { max-width: 96vw; max-height: 94vh; }
   #done { padding: 60px 20px; text-align: center; font-size: 18px; }
+  /* toast: short, non-blocking feedback for gallery/compare decisions */
+  #toast { position: fixed; left: 50%; bottom: 130px; z-index: 30; display: flex; align-items: center; gap: 10px;
+           padding: 8px 10px 8px 16px; border-radius: 99px; background: rgba(31, 33, 37, .95); border: 1px solid var(--line);
+           box-shadow: 0 6px 24px rgba(0, 0, 0, .5); font-size: 14px; white-space: nowrap;
+           opacity: 0; transform: translate(-50%, 10px); pointer-events: none; transition: opacity .18s, transform .18s; }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  #toast > .fa-solid:first-child { font-size: 15px; }
+  #toast.reject > .fa-solid:first-child { color: var(--reject); }
+  #toast.keep > .fa-solid:first-child { color: var(--keep); }
+  #toast .undo { padding: 3px 10px; font-size: 13px; border-radius: 99px; }
   #done pre { display: inline-block; text-align: left; max-width: 100%; overflow-x: auto; font-size: 12px; line-height: 1.5;
               background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin: 16px 0 20px; }
   select { background: #2b2e34; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px; font: inherit; }
@@ -154,6 +164,7 @@
 </div>
 <main id="groups"></main>
 <div id="overlay"><img alt=""></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <div id="gallery">
   <div class="gbar">
@@ -171,7 +182,7 @@
   <div class="gbar meta" style="padding-top:4px;padding-bottom:6px;font-size:12px">
     <span><kbd>&larr;</kbd><kbd>&rarr;</kbd> previous/next stack &middot; <kbd>&uarr;</kbd><kbd>&darr;</kbd> photos within the stack &middot;
     <kbd>P</kbd> keep only this &middot; <kbd>&#8679;P</kbd> also keep &middot; <kbd>X</kbd> reject/un-reject photo &middot;
-    <kbd>&#8679;X</kbd> reject stack &middot; <kbd>U</kbd> restore the proposal for this stack &middot;
+    <kbd>&#8679;X</kbd> reject stack &middot; <kbd>U</kbd> restore the proposal for this stack &middot; <kbd>&#9003;</kbd> undo last decision &middot;
     <kbd>C</kbd> compare stack at full resolution &middot; <b>zoom:</b> click the photo, <kbd>Z</kbd>/<kbd>Space</kbd>,
     <kbd>0</kbd> fit <kbd>1</kbd> 100% <kbd>2</kbd> 200% &middot; drag, scroll or use the navigator to move around</span>
     <span style="flex:1"></span><span id="gstats"></span>
@@ -423,6 +434,7 @@ function openGallery(groupId) {
 }
 
 function closeGallery() {
+  hideToast();
   $("#gallery").style.display = "none";
   document.body.style.overflow = "";
   render();
@@ -503,6 +515,7 @@ function redraw() {
 
 function gAct(kind) {
   const g = gGroups[gi], s = g.shots[si];
+  const before = { gi, si, keeps: g.shots.map((x) => x.keep) };  // for the toast's Undo
   if (kind === "pick") for (const o of g.shots) o.keep = o === s;
   else if (kind === "add") s.keep = true;
   else if (kind === "reject") s.keep = !s.keep;
@@ -515,6 +528,65 @@ function gAct(kind) {
                   (kind === "reject" && g.shots.length === 1 && !s.keep);
   if (decided && $("#gAdvance").checked && gi < gGroups.length - 1) gStack(1);
   else redraw();
+  actionToast(kind, g, s, before);
+}
+
+/* ---------- toast ---------- */
+
+let toastTimer = null, lastUndo = null;
+
+function toast(cls, html, undo) {
+  const t = $("#toast");
+  t.className = cls;
+  t.innerHTML = html;
+  lastUndo = undo || null;
+  if (undo) {
+    const b = document.createElement("button");
+    b.className = "undo";
+    b.title = "Undo (Backspace)";
+    b.innerHTML = ic("rotate-left") + "Undo <kbd>&#9003;</kbd>";
+    b.onclick = undoLast;
+    t.appendChild(b);
+  }
+  t.style.bottom = compareOpen() ? "24px" : "130px";  // stay clear of the gallery filmstrip
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, undo ? 3500 : 1800);
+}
+
+function hideToast() {
+  $("#toast").classList.remove("show");
+  lastUndo = null;
+}
+
+function undoLast() {
+  if (!lastUndo) return false;
+  const undo = lastUndo;
+  hideToast();
+  undo();
+  return true;
+}
+
+function actionToast(kind, g, s, before) {
+  const multi = g.shots.length > 1;
+  const next = gi !== before.gi ? ' <span style="color:var(--muted)">· next stack</span>' : "";
+  const undo = () => {
+    g.shots.forEach((x, i) => (x.keep = before.keeps[i]));
+    persist(g);
+    gi = before.gi;
+    si = before.si;
+    redraw();
+    toast("", ic("rotate-left") + "Undone");
+  };
+  let cls, msg;
+  if (kind === "reject") [cls, msg] = s.keep ? ["keep", ic("rotate-left") + `Keeping <b>${s.id}</b> again`]
+                                             : ["reject", ic("xmark") + `Rejected <b>${s.id}</b>`];
+  else if (kind === "pick") [cls, msg] = ["keep", ic("check") + `Keeping <b>${s.id}</b>` + (multi ? " · rest of stack rejected" : "")];
+  else if (kind === "add") [cls, msg] = ["keep", ic("check") + `Also keeping <b>${s.id}</b>`];
+  else if (kind === "rejectStack") [cls, msg] = g.shots.some((x) => x.keep) ? ["", ic("rotate-left") + "Stack restored"]
+    : ["reject", ic("ban") + `Rejected whole stack (${g.shots.length} photo${multi ? "s" : ""})`];
+  else [cls, msg] = ["", ic("rotate-left") + "Restored the proposal for this stack"];
+  toast(cls, msg + next, undo);
 }
 
 $("#openGallery").onclick = () => openGallery(firstUnseen());  // resume at the first stack not reviewed yet
@@ -798,6 +870,7 @@ document.addEventListener("keydown", (e) => {
       u: () => gAct("restore"),
       z: () => setZoom(cmp.zoom ? 0 : 2), " ": () => setZoom(cmp.zoom ? 0 : 2),
       0: () => setZoom(0), 1: () => setZoom(2), 2: () => setZoom(3), 5: () => setZoom(1),
+      backspace: undoLast,
       escape: closeCompare, c: closeCompare,
     };
     if (actions[k]) { e.preventDefault(); actions[k](); }
@@ -812,6 +885,7 @@ document.addEventListener("keydown", (e) => {
       u: () => gAct("restore"),
       z: () => gSetZoom(gView.zoom ? 0 : 2), " ": () => gSetZoom(gView.zoom ? 0 : 2),
       0: () => gSetZoom(0), 1: () => gSetZoom(2), 2: () => gSetZoom(3), 5: () => gSetZoom(1),
+      backspace: undoLast,
       c: openCompare, escape: closeGallery, g: closeGallery,
     };
     if (actions[k]) { e.preventDefault(); actions[k](); }
