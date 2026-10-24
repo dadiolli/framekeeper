@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+<title id="title">Retro camera icon</title>
+<desc id="desc">Playful, rounded retro camera with a bold white sticker outline in green, coral, deep purple, lavender, and golden yellow.</desc>
+<!-- All artwork is editable vector geometry. Transparent background. -->
+<g stroke-linejoin="round" stroke-linecap="round">
+  <!-- White outer sticker edge, echoing the outlined retro lettering -->
+  <path d="M96 154V128Q96 108 116 108H165Q185 108 185 128V146H203L220 102Q227 83 248 83H323Q344 83 351 102L367 146H387V139Q387 119 407 119H430Q450 119 450 139V154Q478 168 478 199V390Q478 429 439 429H72Q33 429 33 390V199Q33 168 61 154V142Q61 122 81 122H96Z" fill="#ffffff" stroke="#ffffff" stroke-width="23"/>
+  <!-- Left shutter and right control -->
+  <rect x="92" y="112" width="91" height="65" rx="25" fill="#e5484d" stroke="#3d348b" stroke-width="13"/>
+  <path d="M119 133H151" stroke="#ffffff" stroke-width="10"/>
+  <rect x="389" y="124" width="60" height="57" rx="19" fill="#f7b801" stroke="#3d348b" stroke-width="13"/>
+  <!-- Raised prism -->
+  <path d="M192 161L221 100Q227 88 243 88H315Q332 88 337 103L357 161Z" fill="#7678ed" stroke="#3d348b" stroke-width="14"/>
+  <rect x="250" y="113" width="70" height="33" rx="10" fill="#f7b801" stroke="#3d348b" stroke-width="10"/>
+  <path d="M296 124H305" stroke="#ffffff" stroke-width="8"/>
+  <!-- Main body -->
+  <rect x="43" y="160" width="426" height="261" rx="39" fill="#e5484d" stroke="#3d348b" stroke-width="16"/>
+  <!-- Color block stripe -->
+  <path d="M81 168H430Q463 168 463 202V225H49V202Q49 168 81 168Z" fill="#3ecf6e"/>
+  <path d="M61 211V202Q61 181 83 181H420" fill="none" stroke="#ffffff" stroke-opacity=".33" stroke-width="9"/>
+  <path d="M49 235H463" stroke="#3d348b" stroke-width="13"/>
+  <path d="M50 389H462V390Q462 415 437 415H75Q50 415 50 390Z" fill="#7678ed"/>
+  <path d="M51 388H461" stroke="#3d348b" stroke-width="12"/>
+  <!-- Small front buttons and flash -->
+  <circle cx="102" cy="283" r="27" fill="#3d348b"/>
+  <circle cx="102" cy="283" r="15" fill="#f7b801"/>
+  <circle cx="96" cy="277" r="5" fill="#ffffff"/>
+  <rect x="373" y="265" width="65" height="37" rx="12" fill="#7678ed" stroke="#3d348b" stroke-width="10"/>
+  <path d="M398 279H416" stroke="#ffffff" stroke-width="7"/>
+  <!-- Lens and rings -->
+  <circle cx="256" cy="292" r="119" fill="#3d348b" stroke="#ffffff" stroke-width="10"/>
+  <circle cx="256" cy="292" r="105" fill="#f7b801"/>
+  <circle cx="256" cy="292" r="85" fill="#3d348b"/>
+  <circle cx="256" cy="292" r="69" fill="#7678ed"/>
+  <circle cx="256" cy="292" r="57" fill="#3d348b"/>
+  <path d="M214 274C223 255 238 246 257 244" fill="none" stroke="#ffffff" stroke-width="17"/>
+  <circle cx="220" cy="307" r="8" fill="#ffffff"/>
+</g>
+</svg>
