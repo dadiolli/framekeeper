@@ -96,3 +96,7 @@ The recent-folders list is stored in `~/.framekeeper/recent.json`.
 - In XMP mode, existing `.xmp` sidecars from other programs are left untouched rather than merged.
 - One folder is open at a time.
 - Working files (previews and crops) live in `<folder>/.framekeeper`. Delete that folder when you are done.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
