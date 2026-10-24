@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Framekeeper</title>
+<style>
+  :root {
+    --bg: #16171a; --panel: #1f2125; --line: #2e3137; --text: #e8e8ea; --muted: #9a9ca3;
+    --keep: #3ecf6e; --reject: #e5484d; --warn: #f5a524;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, system-ui, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 16px; margin: 0; }
+  header .spacer { flex: 1; }
+  main { max-width: 980px; margin: 0 auto; padding: 20px 16px 60px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 28px 0 10px; }
+  button {
+    background: #2b2e34; color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 12px; font: inherit; cursor: pointer; white-space: nowrap;
+  }
+  button:hover:not(:disabled) { border-color: var(--muted); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: var(--keep); color: #08210f; border-color: var(--keep); font-weight: 600; }
+  button.big { font-size: 16px; padding: 10px 20px; }
+  button.link { background: none; border-color: transparent; color: var(--muted); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .open { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .open .or { color: var(--muted); }
+  .open input { flex: 1; min-width: 220px; background: #121316; color: var(--text); border: 1px solid var(--line);
+                border-radius: 6px; padding: 8px 10px; font: inherit; }
+  .hint { color: var(--muted); font-size: 13px; margin-top: 10px; }
+  #msg { margin-top: 14px; white-space: pre-wrap; font: 12px/1.5 ui-monospace, monospace; display: none; }
+  #msg.err { color: #ffb4b6; }
+  #job { margin-top: 14px; display: none; }
+  #job .bar, .row .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  #job .bar > div, .row .bar > div { height: 100%; background: var(--keep); width: 0; transition: width .3s; }
+  #job .bar.indet > div { width: 30%; animation: slide 1.2s infinite ease-in-out; }
+  @keyframes slide { from { margin-left: -30%; } to { margin-left: 100%; } }
+  #active { display: none; margin-top: 14px; padding: 10px 12px; border: 1px solid var(--keep); border-radius: 8px; }
+  #active { align-items: center; gap: 10px; flex-wrap: wrap; }
+  .rows { display: flex; flex-direction: column; gap: 8px; }
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; align-items: center; }
+  .row.missing { opacity: .55; }
+  .row .name { font-weight: 600; font-size: 15px; }
+  .row .path { color: var(--muted); font-size: 12px; word-break: break-all; }
+  .row .stat { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .row .bar { max-width: 360px; }
+  .row .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; margin-left: 6px; vertical-align: 1px; }
+  .chip.done { background: var(--keep); color: #08210f; }
+  .chip.applied { background: #5b8def; color: #06142e; }
+  .chip.warn { background: var(--warn); color: #2a1a00; }
+  .empty { color: var(--muted); }
+  #msg button { font: 13px -apple-system, system-ui, sans-serif; margin: 6px 6px 0 0; text-align: left; white-space: normal; }
+  /* drag & drop: the whole window is the drop zone */
+  #drop { position: fixed; inset: 10px; z-index: 20; display: none; align-items: center; justify-content: center;
+          border: 3px dashed var(--keep); border-radius: 16px; background: rgba(22, 23, 26, .88);
+          font-size: 22px; font-weight: 600; pointer-events: none; }
+  body.dragging #drop { display: flex; }
+  @media (max-width: 640px) { .row { grid-template-columns: 1fr; } .row .actions { justify-content: flex-start; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Framekeeper</h1>
+  <span class="spacer"></span>
+  <button class="link" id="quit" title="Stop the Framekeeper server (your choices are saved)">Quit</button>
+</header>
+<main>
+  <div class="card">
+    <div class="open">
+      <button class="primary big" id="choose">Choose folder…</button>
+      <span class="or">or</span>
+      <input id="path" placeholder="paste a folder path, e.g. ~/Pictures/2026-10-20_shoot" spellcheck="false">
+      <button id="openPath">Open</button>
+    </div>
+    <div class="hint">
+      <b>Tip:</b> you can also drag a folder (or a few photos from it) from Finder onto this page.
+      New folders are scored first (progress shows here), then the review opens. Your choices are saved with every click,
+      so you can stop any time - "Save &amp; close" in the review, close the tab, or Quit - and resume later from the list below.
+      <span id="dryrun"></span>
+    </div>
+    <div id="job"><div id="jobtext"></div><div class="bar"><div></div></div></div>
+    <div id="active"></div>
+    <div id="msg"></div>
+  </div>
+
+  <h2>Recent folders</h2>
+  <div class="rows" id="recent"></div>
+</main>
+
+<div id="drop">Drop a photo folder to open it</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let wantGo = new URLSearchParams(location.search).has("go");
+let polling = false;
+
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+async function post(url, body) {
+  const r = await fetch(url, { method: "POST", body: JSON.stringify(body || {}) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+
+function message(text, isError) {
+  const m = $("#msg");
+  m.textContent = text || "";
+  m.className = isError ? "err" : "";
+  m.style.display = text ? "block" : "none";
+}
+
+async function refresh() {
+  let h;
+  try {
+    h = await (await fetch("/api/home")).json();
+  } catch {
+    message("Framekeeper is not running. Start it again from the terminal.", true);
+    return;
+  }
+  $("#dryrun").textContent = h.dry_run ? "(Dry run: applying only prints what would happen.)" : "";
+  renderJob(h);
+  renderRecent(h);
+  if (h.job.state === "scoring") {
+    if (!polling) { polling = true; setTimeout(() => { polling = false; refresh(); }, 600); }
+  } else if (h.job.state === "ready" && wantGo) {
+    location.href = "/review";
+  }
+}
+
+function renderJob(h) {
+  const job = h.job, box = $("#job"), bar = box.querySelector(".bar");
+  box.style.display = job.state === "scoring" ? "block" : "none";
+  $("#choose").disabled = $("#openPath").disabled = job.state === "scoring";
+  if (job.state === "scoring") {
+    $("#jobtext").innerHTML = `<b>${esc(job.folder.split("/").pop())}</b> &middot; ${esc(job.message || "")}`;
+    bar.classList.toggle("indet", !job.total);
+    bar.firstElementChild.style.width = job.total ? (100 * job.done / job.total) + "%" : "";
+  }
+  if (job.state === "error") message(`Could not open ${job.folder}:\n${job.message}`, true);
+
+  const a = $("#active");
+  const showActive = job.state === "ready" && h.active && !wantGo;
+  a.style.display = showActive ? "flex" : "none";
+  if (showActive) {
+    a.innerHTML = `<span>Open now: <b>${esc(h.active.split("/").pop())}</b></span>
+      <button class="primary" id="cont">Continue reviewing</button><button id="closeActive">Save &amp; close</button>`;
+    $("#cont").onclick = () => (location.href = "/review");
+    $("#closeActive").onclick = async () => { await post("/api/close"); refresh(); };
+  }
+}
+
+function renderRecent(h) {
+  const box = $("#recent");
+  box.innerHTML = "";
+  if (!h.recent.length) {
+    box.innerHTML = '<div class="empty">No folders yet - choose one above.</div>';
+    return;
+  }
+  for (const f of h.recent) box.appendChild(renderRow(f, h));
+}
+
+function renderRow(f, h) {
+  const el = document.createElement("div");
+  el.className = "card row" + (f.exists ? "" : " missing");
+  const busy = h.job.state === "scoring";
+  const movedAway = f.applied === "move" || f.applied === true;
+  let stat, chips = "", progress = "";
+  if (!f.exists) stat = "Folder not found (moved, renamed or on a disconnected drive).";
+  else if (f.error) stat = f.error;
+  else if (!f.scored) stat = "Not scored yet.";
+  else {
+    stat = `${f.shots} shots · ${f.stacks} stacks (${f.near_dup_groups} with near-duplicates) · ` +
+           `${f.keep} keep / ${f.reject} reject` + (f.skipped ? ` · ${f.skipped} unreadable` : "") +
+           ` · reviewed ${f.seen} / ${f.stacks} stacks`;
+    progress = `<div class="bar"><div style="width:${100 * f.seen / Math.max(1, f.stacks)}%"></div></div>`;
+    if (movedAway) chips += '<span class="chip applied">rejects moved</span>';
+    else if (f.applied === "xmp") chips += '<span class="chip applied">XMP labels written</span>';
+    else if (f.reviewed) chips += '<span class="chip done">finished</span>';
+    if (f.uncertain && !f.applied) chips += `<span class="chip warn">${f.uncertain} uncertain</span>`;
+  }
+  el.innerHTML = `
+    <div>
+      <div class="name">${esc(f.name)}${chips}</div>
+      <div class="path">${esc(f.path)}</div>
+      <div class="stat">${esc(stat)}</div>${progress}
+    </div>
+    <div class="actions"></div>`;
+  const actions = el.querySelector(".actions");
+  const add = (label, cls, fn, title, disabled) => {
+    const b = document.createElement("button");
+    b.textContent = label;
+    if (cls) b.className = cls;
+    if (title) b.title = title;
+    b.disabled = !!disabled;
+    b.onclick = fn;
+    actions.appendChild(b);
+  };
+  if (f.exists) {
+    const label = !f.scored ? "Score & review" : f.seen && f.seen < f.stacks ? "Resume" : "Open";
+    add(label, "primary", () => openFolder(f.path, false),
+        movedAway ? "Rejects were moved to _rejects/ - undo the apply first, or rescan" : "", busy || movedAway);
+    if (f.can_undo) add("Undo apply", "", () => undo(f.path), "Move everything from _rejects/ back", busy);
+    if (f.scored) add("Rescan", "", () => {
+      if (confirm(`Rescan ${f.name}?\n\nThis scores the folder again and discards your review choices for it.`)) openFolder(f.path, true);
+    }, "Score again from scratch (discards your choices)", busy);
+  }
+  add("✕", "link", async () => { await post("/api/forget", { path: f.path }); refresh(); }, "Remove from this list (files are not touched)");
+  return el;
+}
+
+async function openFolder(path, rescan) {
+  message("");
+  try {
+    await post("/api/open", { path, rescan });
+    wantGo = true;
+    refresh();
+  } catch (e) {
+    message(e.message, true);
+  }
+}
+
+async function undo(path) {
+  try {
+    message((await post("/api/undo", { path })).output);
+  } catch (e) {
+    message(e.message, true);
+  }
+  refresh();
+}
+
+/* ---------- drag & drop ----------
+   Browsers only reveal names, not paths, so we send the folder name plus some of its file names
+   (or the names of dropped photos) and the server finds the matching folder via Spotlight. */
+
+let dragDepth = 0;
+const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
+window.addEventListener("dragenter", (e) => {
+  if (!hasFiles(e)) return;
+  dragDepth++;
+  document.body.classList.add("dragging");
+});
+window.addEventListener("dragleave", () => {
+  if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove("dragging"); }
+});
+window.addEventListener("dragover", (e) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = "copy"; });
+window.addEventListener("drop", (e) => {
+  e.preventDefault();  // otherwise the browser would navigate to the dropped file
+  dragDepth = 0;
+  document.body.classList.remove("dragging");
+  handleDrop(e.dataTransfer);
+});
+
+async function handleDrop(dt) {
+  // entries must be taken synchronously, before the first await
+  const entries = [...dt.items].map((i) => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+  const dir = entries.find((x) => x.isDirectory);
+  if (dir) return locateAndOpen({ folder: dir.name, children: await listFiles(dir) }, dir.name);
+  if (entries.length) return locateAndOpen({ files: entries.map((x) => x.name) }, "the folder of the dropped photos");
+  message("Drop a folder from Finder (or a few photos from it).", true);
+}
+
+function listFiles(dir) {
+  return new Promise((resolve) => dir.createReader().readEntries(
+    (es) => resolve(es.filter((x) => x.isFile && !x.name.startsWith(".")).map((x) => x.name).slice(0, 20)),
+    () => resolve([])));
+}
+
+async function locateAndOpen(req, label) {
+  message(`Looking for ${label} …`);
+  try {
+    const { matches } = await post("/api/locate", req);
+    if (matches.length === 1) return openFolder(matches[0], false);
+    if (!matches.length) return message(`Couldn't find where ${label} is on disk (Spotlight may not index that drive). Use "Choose folder…" instead.`, true);
+    const m = $("#msg");
+    m.className = "";
+    m.style.display = "block";
+    m.textContent = "Several folders match - which one?";
+    m.appendChild(document.createElement("br"));
+    for (const p of matches) {
+      const b = document.createElement("button");
+      b.textContent = p;
+      b.onclick = () => openFolder(p, false);
+      m.appendChild(b);
+    }
+  } catch (e) {
+    message(e.message, true);
+  }
+}
+
+$("#choose").onclick = async () => {
+  message("");
+  $("#choose").disabled = true;
+  try {
+    const r = await post("/api/choose");
+    if (r.path) await openFolder(r.path, false);
+  } catch (e) {
+    message(e.message, true);
+  } finally {
+    $("#choose").disabled = false;
+  }
+};
+$("#openPath").onclick = () => $("#path").value.trim() && openFolder($("#path").value.trim(), false);
+$("#path").onkeydown = (e) => { if (e.key === "Enter") $("#openPath").click(); };
+$("#quit").onclick = async () => {
+  if (!confirm("Stop Framekeeper? Your choices are saved; reopen the folder later to continue.")) return;
+  await post("/api/quit").catch(() => {});
+  document.querySelector("main").innerHTML = '<div class="card">Framekeeper stopped. Start it again from the terminal to continue.</div>';
+};
+
+refresh();
+</script>
+</body>
+</html>

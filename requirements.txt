@@ -1,0 +1,8 @@
+# Python 3.10-3.13. rawpy (RAW-only shots) has no prebuilt wheels for 3.14 yet,
+# and newer rawpy releases dropped Intel-mac wheels - hence the pin.
+numpy>=1.26
+opencv-python-headless>=4.9
+Pillow>=10.0
+ImageHash>=4.3
+ExifRead>=3.0
+rawpy>=0.21,<0.26; python_version < "3.14"

@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Framekeeper</title>
+<style>
+  :root {
+    --bg: #16171a; --panel: #1f2125; --line: #2e3137; --text: #e8e8ea; --muted: #9a9ca3;
+    --keep: #3ecf6e; --reject: #e5484d; --warn: #f5a524;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 -apple-system, system-ui, sans-serif; }
+  header {
+    position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
+    padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 16px; margin: 0; }
+  header .stats { color: var(--muted); }
+  header label { color: var(--muted); user-select: none; }
+  header .spacer { flex: 1; }
+  #saved { min-width: 150px; text-align: right; } /* reserve space so the header doesn't reflow on first save */
+  button {
+    background: #2b2e34; color: var(--text); border: 1px solid var(--line); border-radius: 6px;
+    padding: 6px 12px; font: inherit; cursor: pointer;
+  }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--keep); color: #08210f; border-color: var(--keep); font-weight: 600; }
+  button.danger { color: #ffb4b6; }
+  kbd { font: 11px ui-monospace, monospace; padding: 0 4px; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); }
+  .help { color: var(--muted); padding: 8px 20px 0; font-size: 13px; }
+  main { padding: 12px 20px 60px; }
+  .group { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin: 12px 0; padding: 12px; }
+  .group.uncertain { border-color: var(--warn); }
+  .group.nokeep { border-color: var(--reject); }
+  .ghead { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 10px; }
+  .ghead .meta { color: var(--muted); }
+  .badge { font-size: 12px; padding: 1px 8px; border-radius: 99px; background: var(--warn); color: #2a1a00; font-weight: 600; }
+  .badge.red { background: var(--reject); color: #fff; }
+  .row { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+  figure { margin: 0; flex: 0 0 auto; width: 240px; cursor: pointer; position: relative; }
+  figure img { width: 240px; height: 180px; object-fit: contain; background: #000; display: block;
+               border: 3px solid transparent; border-radius: 6px; }
+  figure.keep img { border-color: var(--keep); }
+  figure:not(.keep) img { opacity: .45; }
+  figure:not(.keep):hover img { opacity: .8; }
+  .zoom { position: absolute; top: 8px; right: 8px; padding: 2px 8px; font-size: 14px; line-height: 1.2;
+          background: rgba(0,0,0,.6); border-color: transparent; opacity: 0; }
+  figure:hover .zoom { opacity: 1; }
+  figcaption { font-size: 12px; color: var(--muted); margin-top: 4px; display: flex; justify-content: space-between; gap: 6px; }
+  figcaption b { color: var(--text); font-weight: 600; }
+  .tag { position: absolute; top: 8px; left: 8px; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
+  .keep > .tag { background: var(--keep); color: #08210f; }
+  :not(.keep) > .tag { background: var(--reject); color: #fff; }
+  .bar { height: 4px; background: var(--line); border-radius: 2px; margin-top: 3px; }
+  .bar > div { height: 100%; background: var(--muted); border-radius: 2px; }
+  figure.keep .bar > div { background: var(--keep); }
+  #overlay { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: none; align-items: center; justify-content: center; z-index: 10; cursor: zoom-out; }
+  #overlay img { max-width: 96vw; max-height: 94vh; }
+  #done { padding: 60px 20px; text-align: center; font-size: 18px; }
+  #done pre { display: inline-block; text-align: left; max-width: 100%; overflow-x: auto; font-size: 12px; line-height: 1.5;
+              background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin: 16px 0 20px; }
+  select { background: #2b2e34; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px; font: inherit; }
+
+  /* gallery: one stack at a time, almost full window */
+  #gallery { position: fixed; inset: 0; z-index: 8; background: #0b0c0e; display: none; flex-direction: column; }
+  #gallery .gbar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 8px 14px;
+                   background: var(--panel); border-bottom: 1px solid var(--line); }
+  #gallery .gbar .pos { font-weight: 600; min-width: 210px; }
+  #gallery .gbar .meta { color: var(--muted); }
+  #gallery .gbar label { color: var(--muted); user-select: none; }
+  #gstage { flex: 1; min-height: 0; position: relative; display: flex; align-items: center; justify-content: center; padding: 10px 56px; }
+  #gstage img { max-width: 100%; max-height: 100%; object-fit: contain; display: block;
+                outline: 4px solid var(--keep); outline-offset: -4px; }
+  #gstage.rejected img { outline-color: var(--reject); } /* full brightness: you're judging this photo */
+  #gstage .stamp { position: absolute; top: 22px; left: 70px; font-size: 18px; font-weight: 800; padding: 4px 14px; border-radius: 6px; }
+  #gstage.keep .stamp { background: var(--keep); color: #08210f; }
+  #gstage.rejected .stamp { background: var(--reject); color: #fff; }
+  #gstage .nav { position: absolute; top: 50%; transform: translateY(-50%); font-size: 26px; padding: 14px 10px;
+                 background: rgba(255,255,255,.06); border-color: transparent; }
+  #gstage .nav.prev { left: 8px; }
+  #gstage .nav.next { right: 8px; }
+  #gstage.zoomed { padding: 0; overflow: hidden; cursor: grab; touch-action: none; user-select: none; }
+  #gstage.zoomed:active { cursor: grabbing; }
+  #gstage.zoomed img { position: absolute; left: 0; top: 0; max-width: none; max-height: none;
+                       transform-origin: 0 0; pointer-events: none; }
+  #gstage:not(.zoomed) img { cursor: zoom-in; }
+  /* navigator: overview of the photo with the visible area; click or drag it to move around */
+  .navmap { position: absolute; right: 14px; bottom: 14px; z-index: 2; width: 200px; cursor: crosshair;
+            border: 1px solid rgba(255,255,255,.5); box-shadow: 0 2px 12px rgba(0,0,0,.6); touch-action: none; }
+  .navmap img { display: block; width: 100%; height: auto; position: static !important; transform: none !important;
+                max-width: none; pointer-events: none; outline: none !important; opacity: 1 !important; }
+  .navmap .vis { position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 9999px rgba(0,0,0,.45); pointer-events: none; }
+  #compare .navmap { position: fixed; }
+  #gstrip { display: flex; gap: 6px; justify-content: center; overflow-x: auto; padding: 8px 14px 10px;
+            background: var(--panel); border-top: 1px solid var(--line); min-height: 40px; }
+  #gstrip .t { position: relative; flex: 0 0 auto; cursor: pointer; }
+  #gstrip .t img { height: 78px; display: block; border: 3px solid transparent; border-radius: 4px; }
+  #gstrip .t:not(.keep) img { opacity: .75; }
+  #gstrip .t.keep img { border-color: var(--keep); }
+  #gstrip .t.cur img { border-color: #fff; opacity: 1; }
+  #gstrip .t .tag { top: 4px; left: 4px; font-size: 9px; }
+  #gstrip .single { color: var(--muted); align-self: center; font-size: 13px; }
+
+  /* compare: every photo of the stack at full resolution, panned and zoomed together */
+  #compare { position: fixed; inset: 0; z-index: 9; background: #0b0c0e; display: none; flex-direction: column; }
+  #cgrid { flex: 1; min-height: 0; display: grid; gap: 6px; padding: 6px; grid-auto-rows: 1fr; }
+  .cpanel { position: relative; overflow: hidden; background: #000; border: 3px solid var(--reject);
+            border-radius: 6px; cursor: grab; touch-action: none; user-select: none; }
+  .cpanel.keep { border-color: var(--keep); }
+  .cpanel.cur { box-shadow: 0 0 0 2px #fff; }
+  .cpanel:active { cursor: grabbing; }
+  .cpanel img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; pointer-events: none; }
+  .cpanel .tag { z-index: 1; }
+  .cpanel .clabel { position: absolute; left: 8px; bottom: 6px; z-index: 1; font-size: 12px; padding: 1px 6px;
+                    border-radius: 4px; background: rgba(0,0,0,.65); }
+  .cpanel .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+  #czoom button.primary { font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <button id="home" title="Back to the folder list - your choices are already saved">&larr; Save &amp; close</button>
+  <h1 id="title">Framekeeper</h1>
+  <span class="stats" id="stats"></span>
+  <label><input type="checkbox" id="onlyUncertain"> only uncertain</label>
+  <label><input type="checkbox" id="showSingles"> show ungrouped photos</label>
+  <button id="openGallery" title="Gallery mode (G)">Gallery</button>
+  <span class="spacer"></span>
+  <span class="stats" id="saved"></span>
+  <label class="stats" title="What happens to the rejects when you finish">then
+    <select id="applyMode">
+      <option value="move">move rejects to _rejects/</option>
+      <option value="xmp">write XMP colour labels</option>
+      <option value="none">only save choices</option>
+    </select></label>
+  <button class="primary" id="finish">Finish &amp; apply</button>
+</header>
+<div class="help">
+  Green = keep, red = reject. <b>Click</b> a shot to make it the only keep in its group
+  (ungrouped photos: click toggles keep/reject), <b>&#8984;/Ctrl/Shift-click</b> to toggle it on its own (keep several).
+  "Reject all" rejects a whole group. <b>Preview without changing the selection:</b> hover + <b>Space</b>,
+  <b>Alt/&#8997;-click</b>, or the &#10530; button. <b>G</b> opens the gallery (at the hovered group).
+  "Compare" shows all shots of a group side by side at full resolution. Uncertain groups (orange) are listed first.
+</div>
+<main id="groups"></main>
+<div id="overlay"><img alt=""></div>
+
+<div id="gallery">
+  <div class="gbar">
+    <span class="pos" id="gpos"></span>
+    <span class="meta" id="gmeta"></span>
+    <span style="flex:1"></span>
+    <button id="gKeep" title="Keep only this photo in its stack (P)">Keep <kbd>P</kbd></button>
+    <button id="gReject" class="danger" title="Reject / un-reject this photo (X)">Reject photo <kbd>X</kbd></button>
+    <button id="gRejectStack" class="danger" title="Reject the whole stack (Shift+X)">Reject stack <kbd>&#8679;X</kbd></button>
+    <button id="gCompare" title="All photos of this stack side by side at full resolution (C)">Compare stack <kbd>C</kbd></button>
+    <span id="gzoombtns"></span>
+    <label title="Jump to the next stack after Keep, Reject stack, or rejecting an ungrouped photo"><input type="checkbox" id="gAdvance" checked> auto-advance</label>
+    <button id="gClose" title="Back to the grid (Esc or G)">Grid <kbd>Esc</kbd></button>
+  </div>
+  <div class="gbar meta" style="padding-top:4px;padding-bottom:6px;font-size:12px">
+    <span><kbd>&larr;</kbd><kbd>&rarr;</kbd> previous/next stack &middot; <kbd>&uarr;</kbd><kbd>&darr;</kbd> photos within the stack &middot;
+    <kbd>P</kbd> keep only this &middot; <kbd>&#8679;P</kbd> also keep &middot; <kbd>X</kbd> reject/un-reject photo &middot;
+    <kbd>&#8679;X</kbd> reject stack &middot; <kbd>U</kbd> restore the proposal for this stack &middot;
+    <kbd>C</kbd> compare stack at full resolution &middot; <b>zoom:</b> click the photo, <kbd>Z</kbd>/<kbd>Space</kbd>,
+    <kbd>0</kbd> fit <kbd>1</kbd> 100% <kbd>2</kbd> 200% &middot; drag, scroll or use the navigator to move around</span>
+    <span style="flex:1"></span><span id="gstats"></span>
+  </div>
+  <div id="gstage">
+    <img alt="" draggable="false">
+    <div class="navmap" hidden><img alt=""><div class="vis"></div></div>
+    <span class="stamp"></span>
+    <button class="nav prev" title="Previous stack (&larr;)">&lsaquo;</button>
+    <button class="nav next" title="Next stack (&rarr;)">&rsaquo;</button>
+  </div>
+  <div id="gstrip"></div>
+</div>
+
+<div id="compare">
+  <div class="gbar">
+    <span class="pos" id="cpos"></span>
+    <span class="meta" id="cmeta"></span>
+    <span style="flex:1"></span>
+    <span id="czoom"></span>
+    <button id="cKeep" title="Keep only the selected photo (P)">Keep <kbd>P</kbd></button>
+    <button id="cReject" class="danger" title="Reject / un-reject the selected photo (X)">Reject photo <kbd>X</kbd></button>
+    <button id="cRejectStack" class="danger" title="Reject the whole stack (Shift+X)">Reject stack <kbd>&#8679;X</kbd></button>
+    <button id="cClose" title="Back to the gallery (Esc or C)">Gallery <kbd>Esc</kbd></button>
+  </div>
+  <div class="gbar meta" style="padding-top:4px;padding-bottom:6px;font-size:12px">
+    <span><b>Fit:</b> click a spot to see it at 100% in every photo &middot; <b>zoomed:</b> drag or scroll to pan all photos together,
+    click a photo to select it &middot; <kbd>Z</kbd>/<kbd>Space</kbd> fit &harr; 100% &middot; <kbd>0</kbd> fit
+    <kbd>1</kbd> 100% <kbd>2</kbd> 200% &middot; <kbd>&uarr;</kbd><kbd>&darr;</kbd> select photo &middot;
+    <kbd>&larr;</kbd><kbd>&rarr;</kbd> previous/next stack &middot; <kbd>P</kbd> <kbd>X</kbd> <kbd>&#8679;X</kbd> <kbd>U</kbd> as in the gallery &middot;
+    navigator (bottom right): click or drag to move around</span>
+    <span style="flex:1"></span><span id="cstats"></span>
+  </div>
+  <div id="cgrid"></div>
+  <div class="navmap" id="cnav" hidden><img alt=""><div class="vis"></div></div>
+</div>
+
+<script>
+let data;
+const $ = (s) => document.querySelector(s);
+const enc = encodeURIComponent;
+
+const imgUrl = (kind, id) => `/${kind}/${enc(id)}?f=${data.token}`;
+
+async function load() {
+  const r = await fetch("/api/decisions");
+  if (!r.ok) return (location.href = "/");  // no folder open (e.g. server restarted): back to the start page
+  data = await r.json();
+  const name = data.folder.split("/").pop();
+  $("#title").textContent = name;
+  $("#title").title = data.folder;
+  document.title = `${name} · Framekeeper`;
+  $("#applyMode").value = data.apply_mode;
+  const modes = { move: "move rejects to _rejects/", xmp: "write XMP colour labels", none: "only save decisions" };
+  $("#finish").title = "Then: " + modes[data.apply_mode];
+  $("#applyMode").onchange = async () => {
+    data.apply_mode = $("#applyMode").value;
+    $("#finish").title = "Then: " + modes[data.apply_mode];
+    await fetch("/api/apply_mode", { method: "POST", body: JSON.stringify({ mode: data.apply_mode }) });
+  };
+  render();
+}
+
+function stats() {
+  const shots = data.groups.flatMap((g) => g.shots);
+  const keep = shots.filter((s) => s.keep).length;
+  const singles = data.groups.filter((g) => g.shots.length === 1).length;
+  $("#stats").textContent =
+    `${shots.length} shots · ${data.groups.length - singles} near-duplicate groups · ${singles} ungrouped · ` +
+    `${data.groups.filter((g) => g.uncertain).length} uncertain · ${keep} keep / ${shots.length - keep} reject`;
+  const seen = data.groups.filter((g) => g.seen).length;
+  $("#stats").textContent += ` · reviewed ${seen} / ${data.groups.length}`;
+  $("#gstats").textContent = `${keep} keep / ${shots.length - keep} reject · reviewed ${seen} / ${data.groups.length} stacks`;
+}
+
+/* ---------- grid ---------- */
+
+let hovered = null, hoveredGroup = null;
+
+function render() {
+  stats();
+  const main = $("#groups");
+  main.innerHTML = "";
+  const onlyU = $("#onlyUncertain").checked, singles = $("#showSingles").checked;
+  const groups = data.groups
+    .filter((g) => singles || g.shots.length > 1)
+    .filter((g) => !onlyU || g.uncertain)
+    .sort((a, b) => (b.uncertain - a.uncertain) || (a.id - b.id));
+  if (!groups.length) main.innerHTML = '<p class="help">No groups match the current filter.</p>';
+  for (const g of groups) main.appendChild(renderGroup(g));
+}
+
+function renderGroup(g) {
+  const el = document.createElement("section");
+  el.className = "group";
+  el.onmouseenter = () => (hoveredGroup = g);
+  const head = document.createElement("div");
+  head.className = "ghead";
+  const first = new Date(Math.min(...g.shots.map((s) => s.time)) * 1000);
+  const single = g.shots.length === 1;
+  head.innerHTML =
+    `<strong>${single ? "Ungrouped" : "Group"} ${g.id + 1}</strong><span class="meta">` +
+    (single ? "" : `${g.shots.length} shots · `) + `${first.toLocaleString()}` +
+    (single ? "" : ` · lead ${Math.round(g.margin * 100)}%`) + `</span>` +
+    (g.uncertain ? '<span class="badge">uncertain</span>' : "") +
+    '<span class="badge red nokeep-badge" hidden>all rejected</span>';
+  const rejectAll = document.createElement("button");
+  rejectAll.className = "reject-all";
+  rejectAll.onclick = () => {
+    if (g.shots.some((s) => s.keep)) for (const s of g.shots) s.keep = false;
+    else restoreProposal(g);
+    refreshGroup(g, el);
+    persist(g);
+  };
+  const toGallery = document.createElement("button");
+  toGallery.textContent = "Gallery";
+  toGallery.onclick = () => openGallery(g.id);
+  head.append(rejectAll, toGallery);
+  if (!single) {
+    const btn = document.createElement("button");
+    btn.textContent = "Compare";
+    btn.title = "All shots side by side at full resolution";
+    btn.onclick = () => { openGallery(g.id); openCompare(); };
+    head.appendChild(btn);
+  }
+  el.appendChild(head);
+
+  const row = document.createElement("div");
+  row.className = "row";
+  for (const s of g.shots) row.appendChild(renderShot(g, s));
+  el.appendChild(row);
+  refreshGroup(g, el);
+  return el;
+}
+
+function renderShot(g, s) {
+  const f = document.createElement("figure");
+  f.dataset.id = s.id;
+  f.innerHTML =
+    `<img loading="lazy" alt="">` +
+    `<span class="tag"></span>` +
+    `<figcaption><span>${s.id} <b>${kinds(s)}</b></span><span>${g.shots.length > 1 ? Math.round(s.rel * 100) + "%" : ""}</span></figcaption>` +
+    `<div class="bar"><div style="width:${Math.max(2, s.rel * 100)}%"></div></div>`;
+  f.querySelector("img").src = imgUrl("thumb", s.id);
+  const zoom = document.createElement("button");
+  zoom.className = "zoom";
+  zoom.title = "Preview (Alt-click or Space also work)";
+  zoom.textContent = "⤢";
+  f.appendChild(zoom);
+  f.onclick = (e) => {
+    if (e.altKey || e.target === zoom) return showPreview(s);
+    if (e.metaKey || e.ctrlKey || e.shiftKey || g.shots.length === 1) s.keep = !s.keep;
+    else for (const o of g.shots) o.keep = o === s;
+    refreshGroup(g, f.closest(".group"));
+    persist(g);
+  };
+  f.onmouseenter = () => (hovered = s);
+  f.onmouseleave = () => { if (hovered === s) hovered = null; };
+  return f;
+}
+
+function kinds(s) {
+  return [s.jpg, s.raw].filter(Boolean).map((n) => n.split(".").pop().toUpperCase()).join("+");
+}
+
+function refreshGroup(g, el) {
+  if (!el) return;
+  for (const f of el.querySelectorAll("figure")) {
+    const s = g.shots.find((x) => x.id === f.dataset.id);
+    f.classList.toggle("keep", s.keep);
+    f.querySelector(".tag").textContent = s.keep ? "KEEP" : "REJECT";
+  }
+  const none = !g.shots.some((s) => s.keep);
+  el.classList.toggle("uncertain", g.uncertain && !none);
+  el.classList.toggle("nokeep", none);
+  el.querySelector(".nokeep-badge").hidden = !none;
+  el.querySelector(".reject-all").textContent = none ? "Restore" : g.shots.length === 1 ? "Reject" : "Reject all";
+  stats();
+}
+
+function restoreProposal(g) {
+  g.shots.forEach((s, i) => (s.keep = i === 0));  // shots are sorted by score: [0] is the proposed pick
+}
+
+function showPreview(s) {
+  $("#overlay img").src = imgUrl("preview", s.id);
+  $("#overlay").style.display = "flex";
+}
+function hidePreview() { $("#overlay").style.display = "none"; }
+const previewOpen = () => $("#overlay").style.display === "flex";
+
+// "seen" = the stack was shown in the gallery or decided on; drives "reviewed x / y" and Resume
+let seenQueue = new Set(), seenTimer = null;
+function markSeen(g) {
+  if (g.seen) return;
+  g.seen = true;
+  seenQueue.add(g.id);
+  clearTimeout(seenTimer);
+  seenTimer = setTimeout(flushSeen, 800);
+}
+async function flushSeen() {
+  clearTimeout(seenTimer);
+  if (!seenQueue.size) return;
+  const groups = [...seenQueue];
+  seenQueue.clear();
+  await fetch("/api/seen", { method: "POST", body: JSON.stringify({ groups }) }).catch(() => {});
+}
+function firstUnseen() {
+  const g = [...data.groups].sort((a, b) => a.id - b.id).find((x) => !x.seen);
+  return g ? g.id : null;
+}
+
+async function persist(g) {
+  markSeen(g);
+  const body = Object.fromEntries(g.shots.map((s) => [s.id, s.keep]));
+  try {
+    const r = await fetch("/api/keep", { method: "POST", body: JSON.stringify(body) });
+    $("#saved").textContent = r.ok ? "saved " + new Date().toLocaleTimeString() : "save failed!";
+  } catch {
+    $("#saved").textContent = "save failed - is the script still running?";
+  }
+  if (!$("#saved").textContent.startsWith("saved")) $("#gstats").textContent = $("#saved").textContent;
+}
+
+/* ---------- gallery ---------- */
+
+let gGroups = [], gi = 0, si = 0;
+// gallery zoom: index into ZOOMS (0 = fit) and the view centre as fraction of width/height.
+// Kept while moving between photos of a stack, so ↑/↓ show the same spot.
+let gView = { zoom: 0, fx: 0.5, fy: 0.5 };
+const galleryOpen = () => $("#gallery").style.display === "flex";
+const pickIndex = (g) => Math.max(0, g.shots.findIndex((s) => s.keep));
+
+function openGallery(groupId) {
+  // all stacks, ungrouped photos included, in shooting order
+  gGroups = [...data.groups].sort((a, b) => a.id - b.id);
+  gi = Math.max(0, gGroups.findIndex((g) => g.id === groupId));
+  si = pickIndex(gGroups[gi]);
+  gView.zoom = 0;
+  hidePreview();
+  $("#gallery").style.display = "flex";
+  document.body.style.overflow = "hidden";
+  drawGallery();
+}
+
+function closeGallery() {
+  $("#gallery").style.display = "none";
+  document.body.style.overflow = "";
+  render();
+}
+
+function drawGallery() {
+  const g = gGroups[gi], s = g.shots[si], single = g.shots.length === 1;
+  markSeen(g);
+  const stage = $("#gstage");
+  const img = stage.querySelector("img");
+  const want = gView.zoom ? imgUrl("full", s.id) : imgUrl("preview", s.id);
+  if (img.dataset.want !== want) {
+    img.dataset.want = want;
+    // show the (already cached) preview right away, swap in full resolution once it has loaded;
+    // layout uses the full size from decisions.json, so both line up
+    img.src = imgUrl("preview", s.id);
+    if (gView.zoom) {
+      const hi = new Image();
+      hi.onload = () => { if (img.dataset.want === want) img.src = want; };
+      hi.src = want;
+    }
+  }
+  stage.classList.toggle("zoomed", !!gView.zoom);
+  stage.classList.toggle("keep", s.keep);
+  stage.classList.toggle("rejected", !s.keep);
+  stage.querySelector(".stamp").textContent = (s.keep ? "KEEP" : "REJECT") + (gView.zoom ? " · " + ZOOM_LABELS[gView.zoom] : "");
+  $("#gzoombtns").innerHTML = ZOOM_LABELS
+    .map((l, i) => `<button data-z="${i}" class="${i === gView.zoom ? "primary" : ""}">${l}</button>`).join(" ");
+  for (const b of $("#gzoombtns").querySelectorAll("button")) b.onclick = () => gSetZoom(+b.dataset.z);
+  layoutStage();
+
+  $("#gpos").textContent = `Stack ${gi + 1} / ${gGroups.length}` + (single ? " · ungrouped" : ` · photo ${si + 1} / ${g.shots.length}`);
+  const allRejected = !g.shots.some((x) => x.keep);
+  $("#gmeta").innerHTML =
+    `${s.id} <b>${kinds(s)}</b> · ${new Date(s.time * 1000).toLocaleString()}` +
+    (single ? "" : ` · sharpness ${Math.round(s.rel * 100)}% of best`) +
+    (g.uncertain ? ' <span class="badge">uncertain</span>' : "") +
+    (allRejected ? ' <span class="badge red">stack rejected</span>' : "");
+  $("#gRejectStack").innerHTML = allRejected ? "Restore stack <kbd>U</kbd>" : "Reject stack <kbd>&#8679;X</kbd>";
+  $("#gReject").innerHTML = (s.keep ? "Reject photo" : "Un-reject photo") + " <kbd>X</kbd>";
+
+  const strip = $("#gstrip");
+  strip.innerHTML = "";
+  if (single) strip.innerHTML = '<span class="single">Ungrouped photo - no near-duplicates</span>';
+  else g.shots.forEach((x, i) => {
+    const t = document.createElement("div");
+    t.className = "t" + (x.keep ? " keep" : "") + (i === si ? " cur" : "");
+    t.innerHTML = `<img src="${imgUrl("thumb", x.id)}" alt=""><span class="tag">${x.keep ? "KEEP" : "REJ"}</span>`;
+    t.onclick = () => { si = i; redraw(); };
+    strip.appendChild(t);
+  });
+  stats();
+
+  // preload neighbours so arrow keys feel instant
+  const ahead = [gGroups[gi + 1], gGroups[gi - 1]].filter(Boolean).map((n) => n.shots[pickIndex(n)]);
+  if (g.shots[si + 1]) ahead.push(g.shots[si + 1]);
+  for (const x of ahead) new Image().src = imgUrl("preview", x.id);
+}
+
+function gStack(d) {
+  const n = Math.min(gGroups.length - 1, Math.max(0, gi + d));
+  if (n === gi) return;
+  gi = n;
+  si = pickIndex(gGroups[gi]);
+  gView.zoom = 0;
+  redraw();
+}
+
+function gPhoto(d) {
+  const g = gGroups[gi];
+  si = Math.min(g.shots.length - 1, Math.max(0, si + d));
+  redraw();
+}
+
+function redraw() {
+  drawGallery();
+  if (compareOpen()) drawCompare();
+}
+
+function gAct(kind) {
+  const g = gGroups[gi], s = g.shots[si];
+  if (kind === "pick") for (const o of g.shots) o.keep = o === s;
+  else if (kind === "add") s.keep = true;
+  else if (kind === "reject") s.keep = !s.keep;
+  else if (kind === "rejectStack") {
+    if (g.shots.some((x) => x.keep)) for (const o of g.shots) o.keep = false;
+    else restoreProposal(g);
+  } else if (kind === "restore") restoreProposal(g);
+  persist(g);
+  const decided = kind === "pick" || (kind === "rejectStack" && !g.shots.some((x) => x.keep)) ||
+                  (kind === "reject" && g.shots.length === 1 && !s.keep);
+  if (decided && $("#gAdvance").checked && gi < gGroups.length - 1) gStack(1);
+  else redraw();
+}
+
+$("#openGallery").onclick = () => openGallery(firstUnseen());  // resume at the first stack not reviewed yet
+$("#home").onclick = async () => {
+  await flushSeen();
+  await fetch("/api/close", { method: "POST" });
+  location.href = "/";
+};
+$("#gClose").onclick = closeGallery;
+$("#gKeep").onclick = () => gAct("pick");
+$("#gReject").onclick = () => gAct("reject");
+$("#gRejectStack").onclick = () => gAct("rejectStack");
+$("#gCompare").onclick = () => openCompare();
+$("#gstage .prev").onclick = () => gStack(-1);
+$("#gstage .next").onclick = () => gStack(1);
+
+/* ---------- gallery zoom ---------- */
+
+function gSetZoom(z, fx, fy) {
+  const s = gGroups[gi].shots[si];
+  if (z && !gView.zoom && fx == null) [fx, fy] = s.focus;  // zooming in from fit: start on the sharpest area
+  gView.zoom = z;
+  if (fx != null) { gView.fx = clamp01(fx); gView.fy = clamp01(fy); }
+  drawGallery();
+}
+
+function layoutStage() {
+  if (!galleryOpen()) return;
+  const stage = $("#gstage"), img = stage.querySelector("img"), nav = stage.querySelector(".navmap");
+  const s = gGroups[gi].shots[si];
+  nav.hidden = !gView.zoom;
+  if (!gView.zoom) {
+    img.style.width = img.style.height = img.style.transform = "";
+    return;
+  }
+  const [W, H] = s.size, sc = ZOOMS[gView.zoom] / devicePixelRatio;
+  const pw = stage.clientWidth, ph = stage.clientHeight;
+  gView.fx = keepInside(gView.fx, pw / (W * sc));
+  gView.fy = keepInside(gView.fy, ph / (H * sc));
+  img.style.width = W * sc + "px";
+  img.style.height = H * sc + "px";
+  img.style.transform = `translate(${pw / 2 - gView.fx * W * sc}px, ${ph / 2 - gView.fy * H * sc}px)`;
+  drawNav(nav, s, gView.fx, gView.fy, pw / (W * sc), ph / (H * sc));
+}
+
+// keep the visible area inside the photo (vis = visible fraction); centre it if the photo is smaller than the view
+function keepInside(v, vis) {
+  return vis >= 1 ? 0.5 : Math.min(1 - vis / 2, Math.max(vis / 2, v));
+}
+
+function drawNav(nav, s, fx, fy, visW, visH) {
+  const thumb = nav.querySelector("img");
+  if (thumb.dataset.id !== s.id) { thumb.dataset.id = s.id; thumb.src = imgUrl("thumb", s.id); }
+  const r = nav.querySelector(".vis");
+  const l = clamp01(fx - visW / 2), t = clamp01(fy - visH / 2);
+  r.style.left = l * 100 + "%";
+  r.style.top = t * 100 + "%";
+  r.style.width = (clamp01(fx + visW / 2) - l) * 100 + "%";
+  r.style.height = (clamp01(fy + visH / 2) - t) * 100 + "%";
+}
+
+// click or drag on a navigator calls moveTo(fx, fy) with the pointed-at spot
+function attachNav(nav, moveTo) {
+  nav.onpointerdown = (e) => {
+    e.stopPropagation();
+    nav.setPointerCapture(e.pointerId);
+    const go = (m) => {
+      const r = nav.getBoundingClientRect();
+      moveTo(clamp01((m.clientX - r.left) / r.width), clamp01((m.clientY - r.top) / r.height));
+    };
+    go(e);
+    nav.onpointermove = go;
+    nav.onpointerup = () => (nav.onpointermove = nav.onpointerup = null);
+  };
+}
+
+(function attachStage() {
+  const stage = $("#gstage");
+  stage.onpointerdown = (e) => {
+    if (e.target.closest("button, .navmap")) return;
+    stage.setPointerCapture(e.pointerId);
+    let last = { x: e.clientX, y: e.clientY }, moved = 0;
+    stage.onpointermove = (m) => {
+      moved += Math.abs(m.clientX - last.x) + Math.abs(m.clientY - last.y);
+      if (gView.zoom) gPan(m.clientX - last.x, m.clientY - last.y);
+      last = { x: m.clientX, y: m.clientY };
+    };
+    stage.onpointerup = (u) => {
+      stage.onpointermove = stage.onpointerup = null;
+      if (moved > 4 || gView.zoom) return;
+      // fit view: click a spot to see it at 100%
+      const r = stage.querySelector("img").getBoundingClientRect();
+      if (u.clientX >= r.left && u.clientX <= r.right && u.clientY >= r.top && u.clientY <= r.bottom)
+        gSetZoom(2, (u.clientX - r.left) / r.width, (u.clientY - r.top) / r.height);
+    };
+  };
+  stage.addEventListener("wheel", (e) => {
+    if (!galleryOpen() || compareOpen()) return;
+    e.preventDefault();
+    if (e.ctrlKey) return gSetZoom(Math.min(ZOOMS.length - 1, Math.max(0, gView.zoom + (e.deltaY < 0 ? 1 : -1))));
+    if (gView.zoom) gPan(-e.deltaX, -e.deltaY);
+  }, { passive: false });
+  attachNav(stage.querySelector(".navmap"), (fx, fy) => { gView.fx = fx; gView.fy = fy; layoutStage(); });
+})();
+
+function gPan(dx, dy) {
+  const [W, H] = gGroups[gi].shots[si].size, sc = ZOOMS[gView.zoom] / devicePixelRatio;
+  gView.fx = clamp01(gView.fx - dx / (W * sc));
+  gView.fy = clamp01(gView.fy - dy / (H * sc));
+  layoutStage();
+}
+
+/* ---------- compare ---------- */
+
+// zoom levels: 0 = fit, otherwise image pixels per physical screen pixel (1 = true 100%)
+const ZOOMS = [0, 0.5, 1, 2];
+const ZOOM_LABELS = ["Fit", "50%", "100%", "200%"];
+let cmp = null;  // {gid, fx, fy, zoom, panels: [{el, img}]}; fx/fy = shared view centre as fraction of width/height
+const compareOpen = () => $("#compare").style.display === "flex";
+
+function openCompare() {
+  cmp = null;
+  $("#compare").style.display = "flex";
+  drawCompare();
+}
+
+function closeCompare() {
+  $("#compare").style.display = "none";
+  cmp = null;
+  $("#cgrid").innerHTML = "";  // drop the full-resolution images
+  drawGallery();
+}
+
+function buildCompare(g) {
+  // start at 100% on the proposed pick's sharpest area
+  const pick = g.shots[0];
+  cmp = { gid: g.id, fx: pick.focus[0], fy: pick.focus[1], zoom: 2, panels: [] };
+  const grid = $("#cgrid");
+  grid.innerHTML = "";
+  const n = g.shots.length;
+  grid.style.gridTemplateColumns = `repeat(${n <= 3 ? n : Math.ceil(Math.sqrt(n))}, minmax(0, 1fr))`;
+  g.shots.forEach((s, i) => {
+    const el = document.createElement("div");
+    el.className = "cpanel";
+    el.innerHTML =
+      `<img alt="" draggable="false"><span class="tag"></span>` +
+      `<span class="clabel">${s.id}${n > 1 ? " · sharpness " + Math.round(s.rel * 100) + "%" : ""}</span>` +
+      `<span class="loading">loading full resolution…</span>`;
+    const img = el.querySelector("img");
+    img.onload = () => { el.querySelector(".loading")?.remove(); layoutCompare(); };
+    img.src = imgUrl("full", s.id);
+    attachPan(el, i);
+    grid.appendChild(el);
+    cmp.panels.push({ el, img });
+  });
+}
+
+function drawCompare() {
+  const g = gGroups[gi];
+  if (!cmp || cmp.gid !== g.id) buildCompare(g);
+  g.shots.forEach((s, i) => {
+    const p = cmp.panels[i];
+    p.el.classList.toggle("keep", s.keep);
+    p.el.classList.toggle("cur", i === si);
+    p.el.querySelector(".tag").textContent = s.keep ? "KEEP" : "REJECT";
+  });
+  const s = g.shots[si];
+  $("#cpos").textContent = `Stack ${gi + 1} / ${gGroups.length}` + (g.shots.length > 1 ? ` · selected ${si + 1} / ${g.shots.length}` : "");
+  $("#cmeta").innerHTML = `${s.id} <b>${kinds(s)}</b>` + (g.uncertain ? ' <span class="badge">uncertain</span>' : "");
+  $("#cReject").innerHTML = (s.keep ? "Reject photo" : "Un-reject photo") + " <kbd>X</kbd>";
+  $("#cRejectStack").innerHTML = g.shots.some((x) => x.keep) ? "Reject stack <kbd>&#8679;X</kbd>" : "Restore stack <kbd>U</kbd>";
+  $("#cstats").textContent = $("#gstats").textContent;
+  $("#czoom").innerHTML = ZOOM_LABELS
+    .map((l, i) => `<button data-z="${i}" class="${i === cmp.zoom ? "primary" : ""}">${l}</button>`).join(" ");
+  for (const b of $("#czoom").querySelectorAll("button")) b.onclick = () => setZoom(+b.dataset.z);
+  layoutCompare();
+}
+
+function scaleFor(p) {
+  const z = ZOOMS[cmp.zoom];
+  if (!z) return Math.min(p.el.clientWidth / p.img.naturalWidth, p.el.clientHeight / p.img.naturalHeight);
+  return z / devicePixelRatio;
+}
+
+function layoutCompare() {
+  layoutStage();
+  if (!cmp) return;
+  const ref = cmp.panels.find((x) => x.img.naturalWidth);
+  if (ref && ZOOMS[cmp.zoom]) {
+    const sc = scaleFor(ref);
+    cmp.fx = keepInside(cmp.fx, ref.el.clientWidth / (ref.img.naturalWidth * sc));
+    cmp.fy = keepInside(cmp.fy, ref.el.clientHeight / (ref.img.naturalHeight * sc));
+  }
+  for (const p of cmp.panels) {
+    const W = p.img.naturalWidth, H = p.img.naturalHeight;
+    if (!W) continue;
+    const sc = scaleFor(p), pw = p.el.clientWidth, ph = p.el.clientHeight;
+    const x = ZOOMS[cmp.zoom] ? pw / 2 - cmp.fx * W * sc : (pw - W * sc) / 2;
+    const y = ZOOMS[cmp.zoom] ? ph / 2 - cmp.fy * H * sc : (ph - H * sc) / 2;
+    p.img.style.width = W * sc + "px";
+    p.img.style.height = H * sc + "px";
+    p.img.style.transform = `translate(${x}px, ${y}px)`;
+  }
+  // navigator for the selected photo (all panels show the same area)
+  const nav = $("#cnav"), p = cmp.panels[si];
+  nav.hidden = !ZOOMS[cmp.zoom] || !p?.img.naturalWidth;
+  if (!nav.hidden) {
+    const sc = scaleFor(p);
+    drawNav(nav, gGroups[gi].shots[si], cmp.fx, cmp.fy,
+            p.el.clientWidth / (p.img.naturalWidth * sc), p.el.clientHeight / (p.img.naturalHeight * sc));
+  }
+}
+
+function setZoom(z) {
+  cmp.zoom = z;
+  drawCompare();
+}
+
+const clamp01 = (v) => Math.min(1, Math.max(0, v));
+
+function panBy(p, dx, dy) {
+  const sc = scaleFor(p);
+  cmp.fx = clamp01(cmp.fx - dx / (p.img.naturalWidth * sc));
+  cmp.fy = clamp01(cmp.fy - dy / (p.img.naturalHeight * sc));
+  layoutCompare();
+}
+
+function attachPan(el, i) {
+  el.onpointerdown = (e) => {
+    el.setPointerCapture(e.pointerId);
+    let last = { x: e.clientX, y: e.clientY }, moved = 0;
+    el.onpointermove = (m) => {
+      moved += Math.abs(m.clientX - last.x) + Math.abs(m.clientY - last.y);
+      if (ZOOMS[cmp.zoom] && cmp.panels[i].img.naturalWidth) panBy(cmp.panels[i], m.clientX - last.x, m.clientY - last.y);
+      last = { x: m.clientX, y: m.clientY };
+    };
+    el.onpointerup = (u) => {
+      el.onpointermove = el.onpointerup = null;
+      if (moved > 4) return;  // it was a drag, not a click
+      si = i;
+      const r = cmp.panels[i].img.getBoundingClientRect();
+      if (!ZOOMS[cmp.zoom] && r.width) {
+        // in fit view a click zooms every photo to 100% at the clicked spot
+        cmp.fx = clamp01((u.clientX - r.left) / r.width);
+        cmp.fy = clamp01((u.clientY - r.top) / r.height);
+        cmp.zoom = 2;
+      }
+      redraw();
+    };
+  };
+}
+
+$("#cgrid").addEventListener("wheel", (e) => {
+  if (!cmp) return;
+  e.preventDefault();
+  if (e.ctrlKey) return setZoom(Math.min(ZOOMS.length - 1, Math.max(0, cmp.zoom + (e.deltaY < 0 ? 1 : -1))));  // pinch
+  const p = cmp.panels.find((x) => x.img.naturalWidth);
+  if (ZOOMS[cmp.zoom] && p) panBy(p, -e.deltaX, -e.deltaY);
+}, { passive: false });
+window.addEventListener("resize", layoutCompare);
+attachNav($("#cnav"), (fx, fy) => { cmp.fx = fx; cmp.fy = fy; layoutCompare(); });
+$("#cClose").onclick = closeCompare;
+$("#cKeep").onclick = () => gAct("pick");
+$("#cReject").onclick = () => gAct("reject");
+$("#cRejectStack").onclick = () => gAct("rejectStack");
+
+/* ---------- shared ---------- */
+
+$("#onlyUncertain").onchange = render;
+$("#showSingles").onchange = render;
+$("#overlay").onclick = hidePreview;
+
+document.addEventListener("keydown", (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (compareOpen()) {
+    const actions = {
+      arrowright: () => gStack(1), arrowleft: () => gStack(-1),
+      arrowdown: () => gPhoto(1), arrowup: () => gPhoto(-1),
+      p: () => gAct(e.shiftKey ? "add" : "pick"),
+      x: () => gAct(e.shiftKey ? "rejectStack" : "reject"),
+      u: () => gAct("restore"),
+      z: () => setZoom(cmp.zoom ? 0 : 2), " ": () => setZoom(cmp.zoom ? 0 : 2),
+      0: () => setZoom(0), 1: () => setZoom(2), 2: () => setZoom(3), 5: () => setZoom(1),
+      escape: closeCompare, c: closeCompare,
+    };
+    if (actions[k]) { e.preventDefault(); actions[k](); }
+    return;
+  }
+  if (galleryOpen()) {
+    const actions = {
+      arrowright: () => gStack(1), arrowleft: () => gStack(-1),
+      arrowdown: () => gPhoto(1), arrowup: () => gPhoto(-1),
+      p: () => gAct(e.shiftKey ? "add" : "pick"),
+      x: () => gAct(e.shiftKey ? "rejectStack" : "reject"),
+      u: () => gAct("restore"),
+      z: () => gSetZoom(gView.zoom ? 0 : 2), " ": () => gSetZoom(gView.zoom ? 0 : 2),
+      0: () => gSetZoom(0), 1: () => gSetZoom(2), 2: () => gSetZoom(3), 5: () => gSetZoom(1),
+      c: openCompare, escape: closeGallery, g: closeGallery,
+    };
+    if (actions[k]) { e.preventDefault(); actions[k](); }
+    return;
+  }
+  if (k === "escape") hidePreview();
+  else if (k === " ") {
+    // Space = quick look at the shot under the mouse, like Finder
+    e.preventDefault();
+    if (previewOpen()) hidePreview();
+    else if (hovered) showPreview(hovered);
+  } else if (k === "g") openGallery(hoveredGroup ? hoveredGroup.id : firstUnseen());
+});
+
+$("#finish").onclick = async () => {
+  const shots = data.groups.flatMap((g) => g.shots);
+  const rejects = shots.filter((s) => !s.keep).length;
+  const empty = data.groups.filter((g) => g.shots.length > 1 && !g.shots.some((s) => s.keep)).length;
+  let msg = `Finish review: ${rejects} of ${shots.length} shots are marked reject.\n${$("#finish").title}.`;
+  if (empty) msg += `\n\nNote: ${empty} near-duplicate group(s) are rejected entirely.`;
+  const unseen = data.groups.filter((g) => !g.seen).length;
+  if (unseen) msg += `\n\n${unseen} stack(s) were not reviewed yet - they keep the automatic proposal.`;
+  if (!confirm(msg)) return;
+  await flushSeen();
+  const r = await fetch("/api/finish", { method: "POST", body: JSON.stringify({ mode: data.apply_mode }) });
+  const j = await r.json().catch(() => ({}));
+  document.body.innerHTML = '<div id="done"><div>Review finished</div><pre></pre><br>' +
+    '<button class="primary" onclick="location.href=\'/\'">Back to folders</button></div>';
+  document.querySelector("#done pre").textContent = r.ok ? j.output : "Apply failed: " + (j.error || r.statusText);
+};
+
+load();
+</script>
+</body>
+</html>

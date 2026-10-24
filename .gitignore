@@ -1,0 +1,36 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# Test shoots kept next to the code - never commit photos
+test_*/
+_rejects/
+
+# Framekeeper working data inside photo folders (previews, decisions)
+.framekeeper/
+.cull/
+*.tmp
+
+# Photo files anywhere, as a safety net
+*.jpg
+*.jpeg
+*.JPG
+*.JPEG
+*.xmp
+*.[aA][rR][wW]
+*.[cC][rR][23]
+*.[nN][eE][fF]
+*.[nN][rR][wW]
+*.[oO][rR][fF]
+*.[rR][aA][fF]
+*.[rR][wW]2
+*.[dD][nN][gG]
+*.[pP][eE][fF]
+*.[sS][rR][wW]
+*.3[fF][rR]
+*.[iI][iI][qQ]
+*.[xX]3[fF]
