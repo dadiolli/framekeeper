@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Framekeeper</title>
+<link rel="icon" type="image/svg+xml" href="/assets/framekeeper_camera.svg">
 <link rel="stylesheet" href="/vendor/fontawesome/css/fontawesome.min.css">
 <link rel="stylesheet" href="/vendor/fontawesome/css/solid.min.css">
 <link rel="stylesheet" href="/vendor/fontawesome/css/regular.min.css">
@@ -44,7 +45,11 @@
   .gbar.meta { line-height: 2; }  /* room for keycaps in the shortcut lines */
   .help { color: var(--muted); padding: 8px 20px 0; font-size: 13px; line-height: 2; }
   .tag .fa-solid, .badge .fa-solid, .stamp .fa-solid { margin-right: 4px; }
-  .logo { color: var(--keep); font-size: 17px; margin-right: -8px; }
+  /* brand: camera mark + "Framekeeper" wordmark from assets/ */
+  .brand { display: inline-flex; align-items: center; gap: 9px; margin: 0 -4px 0 0; line-height: 0; }
+  .brand .mark { height: 30px; width: auto; }
+  .brand .word { height: 17px; width: auto; }
+  .brand-sep { width: 1px; height: 22px; background: var(--line); }
   .zoomgroup { display: inline-flex; align-items: center; gap: 4px; }
   .zoomgroup > .fa-solid { color: var(--muted); margin-right: 2px; }
   main { padding: 12px 20px 60px; }
@@ -151,7 +156,8 @@
 <body>
 <header>
   <button id="home" title="Back to the folder list - your choices are already saved"><i class="fa-solid fa-arrow-left"></i>Save &amp; close</button>
-  <i class="fa-solid fa-camera-retro logo" title="Framekeeper"></i>
+  <span class="brand" title="Framekeeper"><img class="mark" src="/assets/framekeeper_camera.svg" alt=""><img class="word" src="/assets/logo.svg" alt="Framekeeper"></span>
+  <span class="brand-sep"></span>
   <h1 id="title">Framekeeper</h1>
   <span class="stats" id="stats"></span>
   <label><input type="checkbox" id="onlyUncertain"> only uncertain</label>

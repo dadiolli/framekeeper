@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Framekeeper</title>
+<link rel="icon" type="image/svg+xml" href="/assets/framekeeper_camera.svg">
 <link rel="stylesheet" href="/vendor/fontawesome/css/fontawesome.min.css">
 <link rel="stylesheet" href="/vendor/fontawesome/css/solid.min.css">
 <link rel="stylesheet" href="/vendor/fontawesome/css/regular.min.css">
@@ -30,8 +31,10 @@
   button.big { font-size: 16px; padding: 10px 20px; }
   button.link { background: none; border-color: transparent; color: var(--muted); }
   button.link:hover:not(:disabled) { color: var(--text); }
-  header h1 { display: flex; align-items: center; gap: 9px; }
-  header h1 .fa-solid { color: var(--keep); font-size: 18px; }
+  /* brand: camera mark + "Framekeeper" wordmark from assets/ */
+  .brand { display: inline-flex; align-items: center; gap: 9px; margin: 0; line-height: 0; }
+  .brand .mark { height: 30px; width: auto; }
+  .brand .word { height: 17px; width: auto; }
   .chip .fa-solid { margin-right: 3px; }
   .stat .fa-solid { margin-right: 5px; }
   .empty { display: flex; align-items: center; gap: 10px; }
@@ -76,7 +79,7 @@
 </head>
 <body>
 <header>
-  <h1><i class="fa-solid fa-camera-retro"></i>Framekeeper</h1>
+  <h1 class="brand"><img class="mark" src="/assets/framekeeper_camera.svg" alt=""><img class="word" src="/assets/logo.svg" alt="Framekeeper"></h1>
   <span class="spacer"></span>
   <button class="link" id="quit" title="Stop the Framekeeper server (your choices are saved)"><i class="fa-solid fa-power-off"></i>Quit</button>
 </header>
