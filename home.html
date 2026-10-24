@@ -194,7 +194,8 @@ function renderRow(f, h) {
            `${f.keep} keep / ${f.reject} reject` + (f.skipped ? ` · ${f.skipped} unreadable` : "") +
            ` · reviewed ${f.seen} / ${f.stacks} stacks`;
     progress = `<div class="bar"><div style="width:${100 * f.seen / Math.max(1, f.stacks)}%"></div></div>`;
-    if (movedAway) chips += '<span class="chip applied"><i class="fa-solid fa-box-archive"></i>rejects moved</span>';
+    if (f.cleaned) chips += '<span class="chip done"><i class="fa-solid fa-check-double"></i>cleaned up · RAWs only</span>';
+    else if (movedAway) chips += '<span class="chip applied"><i class="fa-solid fa-box-archive"></i>rejects moved</span>';
     else if (f.applied === "xmp") chips += '<span class="chip applied"><i class="fa-solid fa-tag"></i>XMP labels written</span>';
     else if (f.reviewed) chips += '<span class="chip done"><i class="fa-solid fa-flag-checkered"></i>finished</span>';
     if (f.uncertain && !f.applied) chips += `<span class="chip warn"><i class="fa-solid fa-scale-balanced"></i>${f.uncertain} uncertain</span>`;
@@ -221,6 +222,8 @@ function renderRow(f, h) {
       : f.seen && f.seen < f.stacks ? ["play", "Resume"] : ["folder-open", "Open"];
     add(icon, label, "primary", () => openFolder(f.path, false),
         movedAway ? "Rejects were moved to _rejects/ - undo the apply first, or rescan" : "", busy || movedAway);
+    if (f.can_cleanup) add("broom", "Clean up for Lightroom", "", () => cleanupFolder(f),
+        `Move the JPGs of kept RAW shots, the _rejects folder and the preview cache to the ${TRASH}`, busy);
     if (f.can_undo) add("rotate-left", "Undo apply", "", () => undo(f.path), "Move everything from _rejects/ back", busy);
     if (f.scored) add("arrows-rotate", "Rescan", "", () => {
       if (confirm(`Rescan ${f.name}?\n\nThis scores the folder again and discards your review choices for it.`)) openFolder(f.path, true);
@@ -239,6 +242,29 @@ async function openFolder(path, rescan) {
   } catch (e) {
     message(e.message, true);
   }
+}
+
+const TRASH = /Win/.test(navigator.platform) ? "Recycle Bin" : "Trash";
+
+async function cleanupFolder(f) {
+  message("");
+  try {
+    const { plan } = await post("/api/cleanup", { path: f.path, dry_run: true });
+    let msg = `Clean up "${f.name}" for Lightroom?\n\nMoves to the ${TRASH}:\n` +
+              `• ${plan.jpgs} JPG file(s) of kept RAW shots`;
+    if (plan.has_rejects) msg += `\n• the _rejects folder (${plan.rejects_files} files)`;
+    if (plan.caches) msg += "\n• Framekeeper's preview cache";
+    msg += `\n\nKeeps: ${plan.raws_kept} RAW file(s) and their sidecars.`;
+    const only = plan.jpg_only_kept;
+    if (only.length) msg += `\n${only.length} kept photo(s) exist only as JPG and stay: ` +
+                            only.slice(0, 5).join(", ") + (only.length > 5 ? " …" : "");
+    msg += `\n\nEverything can be restored from the ${TRASH}. "Undo apply" is no longer possible afterwards.`;
+    if (!confirm(msg)) return;
+    message((await post("/api/cleanup", { path: f.path })).output);
+  } catch (e) {
+    message(e.message, true);
+  }
+  refresh();
 }
 
 async function undo(path) {

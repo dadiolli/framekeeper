@@ -70,8 +70,9 @@ def folder_status(path):
     if dec:
         moves = p / WORK_DIR / "moves.json"
         st.update(pipeline.summary(dec), scored=True, created=dec.get("created"),
-                  applied=dec.get("applied"), reviewed=dec.get("reviewed"),
-                  can_undo=moves.exists() and moves.read_text().strip() not in ("", "[]"))
+                  applied=dec.get("applied"), reviewed=dec.get("reviewed"), cleaned=dec.get("cleaned"),
+                  can_undo=moves.exists() and moves.read_text().strip() not in ("", "[]"),
+                  can_cleanup=dec.get("applied") in (True, "move") and not dec.get("cleaned"))
     return st
 
 
@@ -360,6 +361,22 @@ def make_handler(app):
             elif path == "/api/forget":
                 recent_forget(body["path"])
                 self.send_json({})
+            elif path == "/api/cleanup":  # {"path": folder, "dry_run": bool}
+                folder = Path(body["path"])
+                dec = pipeline.load(folder)
+                if not dec:
+                    raise ValueError("this folder has not been scored")
+                if body.get("dry_run"):
+                    return self.send_json({"plan": applier.plan_summary(applier.cleanup_plan(folder, dec))})
+                try:
+                    out = io.StringIO()
+                    with contextlib.redirect_stdout(out):
+                        if applier.cleanup(folder, dec, False):
+                            pipeline.save(folder, dec)
+                except RuntimeError as e:
+                    raise ValueError(str(e))
+                print(out.getvalue(), end="")
+                self.send_json({"output": out.getvalue()})
             elif path == "/api/undo":
                 folder = Path(body["path"])
                 self.send_json({"output": captured(applier.undo, folder, False)})

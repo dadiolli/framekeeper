@@ -6,3 +6,4 @@ Pillow>=10.0
 ImageHash>=4.3
 ExifRead>=3.0
 rawpy>=0.21,<0.26; python_version < "3.14"
+Send2Trash>=1.8  # cleanup moves files to the system trash on Windows/Linux (and older macOS)

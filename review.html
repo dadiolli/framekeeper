@@ -14,6 +14,7 @@
     --keep: #3ecf6e; --reject: #e5484d; --warn: #f7b801;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }  /* also for elements styled as flex, e.g. buttons */
   body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 -apple-system, system-ui, sans-serif; }
   header {
     position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
@@ -230,6 +231,7 @@
     <button id="gCompare" title="All photos of this stack side by side at full resolution (C)"><i class="fa-solid fa-table-columns"></i>Compare stack <kbd>C</kbd></button>
     <span id="gzoombtns"></span>
     <label title="Jump to the next stack after Keep, Reject stack, or rejecting an ungrouped photo"><input type="checkbox" id="gAdvance" checked> auto-advance</label>
+    <button class="primary finish-alt" title="Finish the review and apply your choices (see the mode next to Finish in the grid)"><i class="fa-solid fa-flag-checkered"></i>Finish &amp; apply</button>
     <button id="gClose" title="Back to the grid (Esc or G)"><i class="fa-solid fa-table-cells"></i>Grid <kbd>Esc</kbd></button>
   </div>
   <div class="gbar meta" style="padding-top:4px;padding-bottom:6px;font-size:12px">
@@ -259,6 +261,7 @@
     <button id="cKeep" title="Keep only the selected photo (P)"><i class="fa-solid fa-check"></i>Keep <kbd>P</kbd></button>
     <button id="cReject" class="danger" title="Reject / un-reject the selected photo (X)"><i class="fa-solid fa-xmark"></i>Reject photo <kbd>X</kbd></button>
     <button id="cRejectStack" class="danger" title="Reject the whole stack (Shift+X)"><i class="fa-solid fa-ban"></i>Reject stack <kbd>&#8679;X</kbd></button>
+    <button class="primary finish-alt" title="Finish the review and apply your choices (see the mode next to Finish in the grid)"><i class="fa-solid fa-flag-checkered"></i>Finish &amp; apply</button>
     <button id="cClose" title="Back to the gallery (Esc or C)"><i class="fa-solid fa-arrow-left"></i>Gallery <kbd>Esc</kbd></button>
   </div>
   <div class="gbar meta" style="padding-top:4px;padding-bottom:6px;font-size:12px">
@@ -496,6 +499,8 @@ function closeGallery() {
 function drawGallery() {
   const g = gGroups[gi], s = g.shots[si], single = g.shots.length === 1;
   markSeen(g);
+  // Finish & apply only on the last stack, so it isn't hit by accident mid-review
+  for (const b of document.querySelectorAll(".finish-alt")) b.hidden = gi !== gGroups.length - 1;
   const stage = $("#gstage");
   const img = stage.querySelector("img");
   const want = gView.zoom ? imgUrl("full", s.id) : imgUrl("preview", s.id);
@@ -1004,6 +1009,9 @@ document.addEventListener("keydown", (e) => {
     else if (hovered) showPreview(hovered);
   } else if (k === "g") openGallery(hoveredGroup ? hoveredGroup.id : firstUnseen());
 });
+
+// the gallery and compare bars have their own copy of the button
+for (const b of document.querySelectorAll(".finish-alt")) b.onclick = () => $("#finish").click();
 
 $("#finish").onclick = async () => {
   const shots = data.groups.flatMap((g) => g.shots);

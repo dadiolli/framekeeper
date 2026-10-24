@@ -13,6 +13,7 @@ Examples:
     python framekeeper.py ~/Pictures/shoot         # open this folder right away
     python framekeeper.py ~/Pictures/shoot --no-review --dry-run
     python framekeeper.py ~/Pictures/shoot --undo
+    python framekeeper.py ~/Pictures/shoot --cleanup --dry-run   # RAWs only, before Lightroom
 """
 import argparse
 import os
@@ -32,6 +33,8 @@ def main():
                     help="move: rejects -> _rejects/ (default); xmp: colour labels in XMP sidecars; none: only write decisions.json")
     ap.add_argument("--dry-run", action="store_true", help="print what would be applied without touching files")
     ap.add_argument("--undo", action="store_true", help="move everything from a previous --apply move back")
+    ap.add_argument("--cleanup", action="store_true",
+                    help="after --apply move: move the JPGs of kept RAW shots, _rejects/ and the preview cache to the trash")
     ap.add_argument("--rescan", action="store_true", help="ignore existing .framekeeper/decisions.json (and your review edits) and start over")
     ap.add_argument("--time-gap", type=float, default=pipeline.DEFAULT_PARAMS["time_gap"],
                     help="max seconds between shots in one group (default 2.0)")
@@ -49,11 +52,20 @@ def main():
         folder = Path(args.folder).expanduser().resolve()
         if not folder.is_dir():
             sys.exit(f"not a folder: {folder}")
-    elif args.undo or args.no_review:
-        sys.exit("--undo and --no-review need a folder")
+    elif args.undo or args.no_review or args.cleanup:
+        sys.exit("--undo, --cleanup and --no-review need a folder")
 
     if args.undo:
         applier.undo(folder, args.dry_run)
+    elif args.cleanup:
+        dec = pipeline.load(folder)
+        if not dec:
+            sys.exit("this folder has not been scored")
+        try:
+            if applier.cleanup(folder, dec, args.dry_run):
+                pipeline.save(folder, dec)
+        except (ValueError, RuntimeError) as e:
+            sys.exit(f"Cleanup not done: {e}")
     elif args.no_review:
         run_without_review(folder, params, args)
     else:
