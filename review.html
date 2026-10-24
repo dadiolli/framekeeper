@@ -10,7 +10,7 @@
 <style>
   :root {
     --bg: #16171a; --panel: #1f2125; --line: #2e3137; --text: #e8e8ea; --muted: #9a9ca3;
-    --keep: #3ecf6e; --reject: #e5484d; --warn: #f5a524;
+    --keep: #3ecf6e; --reject: #e5484d; --warn: #f7b801;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 -apple-system, system-ui, sans-serif; }
@@ -31,8 +31,18 @@
   button:hover { border-color: var(--muted); }
   button.primary { background: var(--keep); color: #08210f; border-color: var(--keep); font-weight: 600; }
   button.danger { color: #ffb4b6; }
-  kbd { font: 11px ui-monospace, monospace; padding: 0 4px; border: 1px solid var(--line); border-radius: 3px; color: var(--muted); }
-  .help { color: var(--muted); padding: 8px 20px 0; font-size: 13px; }
+  /* keyboard keys drawn as small keycaps */
+  kbd {
+    display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
+    min-width: 1.75em; height: 1.75em; padding: 0 .45em; margin: 0 1px;
+    font: 600 11px/1 -apple-system, system-ui, sans-serif; color: #d4d6db; white-space: nowrap;
+    background: linear-gradient(#383b42, #2a2d33); border: 1px solid #4a4e57; border-bottom-width: 2px;
+    border-radius: 5px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 1px 2px rgba(0, 0, 0, .35);
+  }
+  button kbd { height: 1.6em; min-width: 1.6em; margin-left: 2px; color: var(--muted); }
+  button.primary kbd { background: rgba(0, 0, 0, .14); border-color: rgba(0, 0, 0, .28); color: #08210f; box-shadow: none; }
+  .gbar.meta { line-height: 2; }  /* room for keycaps in the shortcut lines */
+  .help { color: var(--muted); padding: 8px 20px 0; font-size: 13px; line-height: 2; }
   .tag .fa-solid, .badge .fa-solid, .stamp .fa-solid { margin-right: 4px; }
   .logo { color: var(--keep); font-size: 17px; margin-right: -8px; }
   .zoomgroup { display: inline-flex; align-items: center; gap: 4px; }
@@ -68,7 +78,9 @@
   #done { padding: 60px 20px; text-align: center; font-size: 18px; }
   /* toast: short, non-blocking feedback for gallery/compare decisions */
   #toast { position: fixed; left: 50%; bottom: 130px; z-index: 30; display: flex; align-items: center; gap: 10px;
-           padding: 8px 10px 8px 16px; border-radius: 99px; background: rgba(31, 33, 37, .95); border: 1px solid var(--line);
+           padding: 8px 10px 8px 16px; border-radius: 99px; border: 2px solid var(--reject);
+           /* see-through with a blur, so it reads as an overlay and not as part of the photo behind it */
+           background: rgba(22, 23, 26, .62); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
            box-shadow: 0 6px 24px rgba(0, 0, 0, .5); font-size: 14px; white-space: nowrap;
            opacity: 0; transform: translate(-50%, 10px); pointer-events: none; transition: opacity .18s, transform .18s; }
   #toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
@@ -144,7 +156,7 @@
   <span class="stats" id="stats"></span>
   <label><input type="checkbox" id="onlyUncertain"> only uncertain</label>
   <label><input type="checkbox" id="showSingles"> show ungrouped photos</label>
-  <button id="openGallery" title="Gallery mode (G)"><i class="fa-solid fa-images"></i>Gallery</button>
+  <button id="openGallery" title="Gallery mode (G)"><i class="fa-solid fa-images"></i>Gallery <kbd>G</kbd></button>
   <span class="spacer"></span>
   <span class="stats" id="saved"></span>
   <label class="stats" title="What happens to the rejects when you finish">then
@@ -157,9 +169,9 @@
 </header>
 <div class="help">
   Green = keep, red = reject. <b>Click</b> a shot to make it the only keep in its group
-  (ungrouped photos: click toggles keep/reject), <b>&#8984;/Ctrl/Shift-click</b> to toggle it on its own (keep several).
-  "Reject all" rejects a whole group. <b>Preview without changing the selection:</b> hover + <b>Space</b>,
-  <b>Alt/&#8997;-click</b>, or the <i class="fa-solid fa-magnifying-glass-plus"></i> button. <b>G</b> opens the gallery (at the hovered group).
+  (ungrouped photos: click toggles keep/reject), <kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>/<kbd>&#8679;</kbd> + click to toggle it on its own (keep several).
+  "Reject all" rejects a whole group. <b>Preview without changing the selection:</b> hover + <kbd>Space</kbd>,
+  <kbd>&#8997;</kbd> + click, or the <i class="fa-solid fa-magnifying-glass-plus"></i> button. <kbd>G</kbd> opens the gallery (at the hovered group).
   "Compare" shows all shots of a group side by side at full resolution. Uncertain groups (orange) are listed first.
 </div>
 <main id="groups"></main>
