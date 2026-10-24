@@ -297,6 +297,7 @@ def make_handler(app):
                     if not app.ready():
                         return self.send_json({"error": "no folder open"}, 409)
                     body = json.dumps({**app.dec, "apply_mode": app.apply_mode, "token": app.token,
+                                       "default_params": pipeline.DEFAULT_PARAMS,
                                        "dry_run": app.dry_run}).encode()
                 self.send(200, body, "application/json")
             elif len(parts) == 2 and parts[0] in ("thumb", "preview", "crop", "full"):
@@ -365,7 +366,7 @@ def make_handler(app):
             elif path == "/api/quit":
                 self.send_json({})
                 threading.Thread(target=app.server.shutdown, daemon=True).start()
-            elif path in ("/api/keep", "/api/seen", "/api/apply_mode", "/api/finish"):
+            elif path in ("/api/keep", "/api/seen", "/api/apply_mode", "/api/finish", "/api/regroup"):
                 with app.lock:
                     if not app.ready():
                         return self.send_json({"error": "no folder open"}, 409)
@@ -380,6 +381,15 @@ def make_handler(app):
                             if g["id"] in ids:
                                 g["seen"] = True
                         app.save()
+                    elif path == "/api/regroup":  # {"time_gap": s, "hash_dist": n, "apply": bool}
+                        time_gap, hash_dist = float(body["time_gap"]), int(body["hash_dist"])
+                        if not (0 <= hash_dist <= 64 and time_gap >= 0):
+                            raise ValueError("bad grouping values")
+                        result = pipeline.regroup(app.dec, time_gap, hash_dist, bool(body.get("apply")))
+                        if body.get("apply"):
+                            app.shots = {s["id"]: s for g in app.dec["groups"] for s in g["shots"]}
+                            app.save()
+                        return self.send_json(result)
                     elif path == "/api/apply_mode":
                         if body.get("mode") not in APPLY_MODES:
                             raise ValueError("unknown apply mode")

@@ -43,6 +43,16 @@
   button kbd { height: 1.6em; min-width: 1.6em; margin-left: 2px; color: var(--muted); }
   button.primary kbd { background: rgba(0, 0, 0, .14); border-color: rgba(0, 0, 0, .28); color: #08210f; box-shadow: none; }
   .gbar.meta { line-height: 2; }  /* room for keycaps in the shortcut lines */
+  /* grouping panel: regroup the scored shots with looser/stricter thresholds */
+  .panel { margin: 12px 20px 0; padding: 12px 16px; background: var(--panel); border: 1px solid var(--line);
+           border-radius: 10px; display: flex; flex-direction: column; gap: 10px; }
+  .panel[hidden] { display: none; }
+  .prow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .prow .hint { color: var(--muted); font-size: 12px; }
+  .prow input[type=range] { width: 260px; accent-color: var(--keep); }
+  .prow .val { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .prow .note { color: var(--muted); font-size: 12px; }
+  .warn { color: var(--warn); }
   .help { color: var(--muted); padding: 8px 20px 0; font-size: 13px; line-height: 2; }
   .tag .fa-solid, .badge .fa-solid, .stamp .fa-solid { margin-right: 4px; }
   /* brand: camera mark + "Framekeeper" wordmark from assets/ */
@@ -162,6 +172,7 @@
   <span class="stats" id="stats"></span>
   <label><input type="checkbox" id="onlyUncertain"> only uncertain</label>
   <label><input type="checkbox" id="showSingles"> show ungrouped photos</label>
+  <button id="openGrouping" title="Change how similar photos must be to form a stack"><i class="fa-solid fa-sliders"></i>Grouping</button>
   <button id="openGallery" title="Gallery mode (G)"><i class="fa-solid fa-images"></i>Gallery <kbd>G</kbd></button>
   <span class="spacer"></span>
   <span class="stats" id="saved"></span>
@@ -173,6 +184,30 @@
     </select></label>
   <button class="primary" id="finish"><i class="fa-solid fa-flag-checkered"></i>Finish &amp; apply</button>
 </header>
+<div id="groupPanel" class="panel" hidden>
+  <div class="prow">
+    <label for="simSlider"><b>Similarity</b></label>
+    <span class="hint">very similar</span>
+    <input type="range" id="simSlider" min="2" max="30" step="1">
+    <span class="hint">loosely similar</span>
+    <span class="val" id="simValue"></span>
+  </div>
+  <div class="prow">
+    <label for="gapSelect"><b>Max. time between neighbouring shots</b></label>
+    <select id="gapSelect">
+      <option value="1">1 s</option><option value="2">2 s</option><option value="5">5 s</option>
+      <option value="15">15 s</option><option value="60">1 min</option><option value="600">10 min</option>
+      <option value="1000000000">no limit</option>
+    </select>
+    <span class="note">Looser similarity mostly needs a longer gap too, to group the same subject shot seconds or minutes apart.</span>
+  </div>
+  <div class="prow" id="groupPreview">&nbsp;</div>
+  <div class="prow">
+    <button class="primary" id="groupApply"><i class="fa-solid fa-check"></i>Apply</button>
+    <button id="groupDefault"><i class="fa-solid fa-rotate-left"></i>Defaults</button>
+    <button id="groupCancel"><i class="fa-solid fa-xmark"></i>Close</button>
+  </div>
+</div>
 <div class="help">
   Green = keep, red = reject. <b>Click</b> a shot to make it the only keep in its group
   (ungrouped photos: click toggles keep/reject), <kbd>&#8984;</kbd>/<kbd>Ctrl</kbd>/<kbd>&#8679;</kbd> + click to toggle it on its own (keep several).
@@ -870,6 +905,57 @@ $("#cKeep").onclick = () => gAct("pick");
 $("#cReject").onclick = () => gAct("reject");
 $("#cRejectStack").onclick = () => gAct("rejectStack");
 
+/* ---------- grouping panel ---------- */
+
+let groupPreviewTimer = null;
+const groupingValues = () => ({ hash_dist: +$("#simSlider").value, time_gap: +$("#gapSelect").value });
+
+function ensureGapOption(v) {
+  if (![...$("#gapSelect").options].some((o) => +o.value === +v)) $("#gapSelect").add(new Option(`${v} s`, v));
+  $("#gapSelect").value = [...$("#gapSelect").options].find((o) => +o.value === +v).value;
+}
+
+function openGrouping() {
+  $("#simSlider").value = data.params.hash_dist;
+  ensureGapOption(data.params.time_gap);
+  $("#groupPanel").hidden = false;
+  previewGrouping();
+}
+
+function previewGrouping() {
+  const v = groupingValues(), d = data.default_params;
+  $("#simValue").textContent = `distance ${v.hash_dist}` + (v.hash_dist === d.hash_dist ? " (default)" : "");
+  clearTimeout(groupPreviewTimer);
+  groupPreviewTimer = setTimeout(async () => {
+    const r = await fetch("/api/regroup", { method: "POST", body: JSON.stringify(v) });
+    if (!r.ok) return;
+    const p = await r.json();
+    const nowDup = data.groups.filter((g) => g.shots.length > 1).length;
+    $("#groupPreview").innerHTML =
+      `${ic("layer-group")} <span><b>${p.stacks}</b> stacks, <b>${p.near_dup_groups}</b> with near-duplicates ` +
+      `<span class="note">(now ${data.groups.length} / ${nowDup})</span></span>` +
+      (p.changed ? `<span class="warn">${ic("triangle-exclamation")} ${p.changed} stack(s) change - choices in those are reset to the automatic proposal</span>`
+                 : '<span class="note">no change</span>');
+    $("#groupApply").disabled = !p.changed;
+  }, 150);
+}
+
+$("#openGrouping").onclick = () => ($("#groupPanel").hidden ? openGrouping() : ($("#groupPanel").hidden = true));
+$("#simSlider").oninput = previewGrouping;
+$("#gapSelect").onchange = previewGrouping;
+$("#groupCancel").onclick = () => ($("#groupPanel").hidden = true);
+$("#groupDefault").onclick = () => {
+  $("#simSlider").value = data.default_params.hash_dist;
+  ensureGapOption(data.default_params.time_gap);
+  previewGrouping();
+};
+$("#groupApply").onclick = async () => {
+  await flushSeen();
+  const r = await fetch("/api/regroup", { method: "POST", body: JSON.stringify({ ...groupingValues(), apply: true }) });
+  if (r.ok) location.reload();
+  else $("#groupPreview").textContent = "Regrouping failed: " + ((await r.json().catch(() => ({}))).error || r.statusText);
+};
+
 /* ---------- shared ---------- */
 
 $("#onlyUncertain").onchange = render;
@@ -878,6 +964,7 @@ $("#overlay").onclick = hidePreview;
 
 document.addEventListener("keydown", (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.matches("input, select, textarea")) return;  // e.g. the grouping slider has focus
   const k = e.key.toLowerCase();
   if (compareOpen()) {
     const actions = {

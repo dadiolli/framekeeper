@@ -42,6 +42,7 @@ The recent-folders list is stored in `~/.framekeeper/recent.json`.
      - Click a shot to make it the only keep in its group. ⌘/Ctrl/Shift-click to keep several.
      - Ungrouped photos are hidden until you tick "show ungrouped photos". Clicking one toggles keep/reject.
      - "Reject all" rejects a whole group; "Restore" brings back the proposal.
+     - **Grouping** opens a panel to regroup the folder with looser or stricter rules, without rescanning. A **Similarity** slider goes from "very similar" (strict) to "loosely similar", and **Max. time between neighbouring shots** goes from 1 s to "no limit". To find the same subject shot seconds or minutes apart, you usually need a longer time gap as well as looser similarity. A live preview shows the resulting number of stacks before you click Apply. Stacks that stay exactly the same keep your choices and "reviewed" state; stacks that change get a fresh automatic proposal. The settings are saved per folder.
      - To preview a shot without changing the selection: hover and press Space, Alt/⌥-click it, or use the ⤢ button.
      - "Compare" opens the full-resolution compare view for that group (see below).
    - **Gallery** (button or `G`; `G` over a group opens the gallery at that group): one stack at a time, almost full window, in shooting order, ungrouped photos included. It opens on the stack's current keep, with a filmstrip of the stack below.

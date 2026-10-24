@@ -119,6 +119,34 @@ def build(folder, params, workers, progress=None):
     return dec
 
 
+def regroup(dec, time_gap, hash_dist, apply=False):
+    """Group the already-scored shots again with other thresholds (no rescoring needed).
+
+    Stacks that come out exactly as before keep the user's choices and "seen" state;
+    stacks that change get a fresh proposal. With apply=False nothing is modified and
+    only the resulting counts are returned (live preview).
+    """
+    shots = [s for g in dec["groups"] for s in g["shots"]]
+    old = {frozenset(s["id"] for s in g["shots"]): g for g in dec["groups"]}
+    new = group(shots, time_gap, hash_dist)
+    changed = sum(frozenset(s["id"] for s in g) not in old for g in new)
+    result = {"stacks": len(new), "near_dup_groups": sum(len(g) > 1 for g in new), "changed": changed}
+    if not apply:
+        return result
+    keep_before = {s["id"]: s["keep"] for s in shots}
+    groups = propose(new, dec["params"]["margin"])
+    for g in groups:
+        prev = old.get(frozenset(s["id"] for s in g["shots"]))
+        if prev:
+            for s in g["shots"]:
+                s["keep"] = keep_before[s["id"]]
+            if prev.get("seen"):
+                g["seen"] = True
+    dec["groups"] = groups
+    dec["params"] = {**dec["params"], "time_gap": time_gap, "hash_dist": hash_dist}
+    return result
+
+
 def summary(dec):
     groups = dec["groups"]
     shots = [s for g in groups for s in g["shots"]]
