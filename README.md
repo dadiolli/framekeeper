@@ -1,4 +1,11 @@
-# Framekeeper
+<p align="center">
+  <img src="assets/framekeeper_camera.svg" alt="" height="110">
+  <br>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo.svg">
+    <img src="assets/logo-on-light.svg" alt="Framekeeper" height="44">
+  </picture>
+</p>
 
 Keeps the sharpest shot of every burst of near-duplicates in a RAW+JPG shoot folder.
 It proposes picks, lets you review them in the browser (on by default), then applies them without deleting anything.
@@ -61,6 +68,8 @@ The recent-folders list is stored in `~/.framekeeper/recent.json`.
      | `C` | compare the stack at full resolution |
      | `Esc` / `G` | back to the grid |
 
+     On the last stack, a **Finish & apply** button appears in the gallery (and in compare), so you can finish right there.
+
      With "auto-advance" on (default), it jumps to the next stack after `P`, `⇧X`, or rejecting an ungrouped photo. Every decision shows a short confirmation at the bottom ("✕ Rejected DSC0005 · next stack") with an Undo button.
 
      **Zoom and move around:**
@@ -77,6 +86,12 @@ The recent-folders list is stored in `~/.framekeeper/recent.json`.
    - **move** (default): rejected RAW+JPG pairs (and their sidecars) go to `_rejects/`. Undo it from the start page or with `--undo`. A folder whose rejects were moved can only be reopened after an undo (or a rescan).
    - **xmp**: writes `.xmp` sidecars for RAW files with label Green (keep) or Red (reject). In Lightroom, run *Metadata → Read Metadata from Files* and filter by label. Applying again after another review rewrites the sidecars Framekeeper created.
    - **none**: only saves `decisions.json`.
+7. **Clean up for Lightroom** (optional, after **move**): on the start page, folders whose rejects were moved get a **Clean up for Lightroom** button (or run `framekeeper.py <folder> --cleanup`, add `--dry-run` to preview). It moves these to the system trash, where they can be restored:
+   - the JPGs of kept shots that also have a RAW
+   - the `_rejects` folder
+   - the preview cache
+
+   What's left is the kept RAW files with their sidecars, ready to import. Kept photos that exist only as JPG stay. A confirmation lists everything first. Afterwards "Undo apply" is no longer possible. The trash is the macOS Trash (built-in `trash` command on macOS 15+), the Windows Recycle Bin, or the freedesktop.org trash on Linux (via Send2Trash).
 
 ## Useful flags
 
@@ -91,6 +106,7 @@ The recent-folders list is stored in `~/.framekeeper/recent.json`.
 | `--margin` | 0.10 | threshold for "uncertain" |
 | `--rescan` | off | ignore saved decisions and score again |
 | `--undo` | | restore files moved by `--apply move` |
+| `--cleanup` | | after `--apply move`: trash JPG twins of kept RAWs, `_rejects/` and the cache |
 
 ## Limitations (prototype)
 
